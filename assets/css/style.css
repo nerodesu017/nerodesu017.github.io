@@ -447,4 +447,6 @@ table td { border: 1px solid #404040; }
 
 .highlight .o { color: #f92672; }
 
+img:hover { width: 200%; height: 200%; }
+
 /*# sourceMappingURL=style.css.map */

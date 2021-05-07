@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="ANTIBOTS - PART II - What is AST Manipulation, What is Regex, Why Would I Prefer One Over The Other?" />
 <script type="application/ld+json">
-{"@type":"BlogPosting","headline":"ANTIBOTS - PART II - What is AST Manipulation, What is Regex, Why Would I Prefer One Over The Other?","dateModified":"2021-05-06T22:25:00+03:00","url":"/antibots/programming/2021/05/06/antibots-part-2.html","datePublished":"2021-05-06T22:25:00+03:00","mainEntityOfPage":{"@type":"WebPage","@id":"/antibots/programming/2021/05/06/antibots-part-2.html"},"author":{"@type":"Person","name":"Nero"},"description":"We got to the point I’ve been waiting for: AST Manipulation and Regex.","@context":"https://schema.org"}</script>
+{"@type":"BlogPosting","headline":"ANTIBOTS - PART II - What is AST Manipulation, What is Regex, Why Would I Prefer One Over The Other?","dateModified":"2021-05-06T22:25:00+03:00","datePublished":"2021-05-06T22:25:00+03:00","url":"/antibots/programming/2021/05/06/antibots-part-2.html","mainEntityOfPage":{"@type":"WebPage","@id":"/antibots/programming/2021/05/06/antibots-part-2.html"},"author":{"@type":"Person","name":"Nero"},"description":"We got to the point I’ve been waiting for: AST Manipulation and Regex.","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="NeroAdventures" />
 </head>
@@ -64,9 +64,57 @@
 
 <h3 id="lets-see-what-these-would-look-like">Let’s see what these would look like:</h3>
 
-<p>![alt text][logo]</p>
+<p><img src="/assets/img/ANTIBOTS-PART-II-IMG-1.png" alt="alt text" /></p>
 
-<p>[logo]:</p>
+<h3 id="making-use-of-httpsregex101com-we-found-a-regex-that-would-suffice-what-we-search-for-at-least-the-first-part">Making use of https://regex101.com we found a Regex that would suffice what we search for (at least the first part):</h3>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="o">/</span><span class="kd">function</span> <span class="nx">solution</span><span class="err">\</span><span class="p">(</span><span class="err">\</span><span class="p">)</span> <span class="p">{((.</span><span class="o">|</span><span class="err">\</span><span class="nx">n</span><span class="o">|</span><span class="err">\</span><span class="nx">r</span><span class="err">\</span><span class="nx">n</span><span class="p">)</span><span class="o">*</span><span class="p">)}</span><span class="sr">/gm</span></code></pre></figure>
+
+<h3 id="our-first-matching-group-would-be-this-one">Our first matching group would be this one:</h3>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">let</span> <span class="nx">key</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">secret_key</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">return</span> <span class="nx">key</span><span class="p">;</span></code></pre></figure>
+
+<h3 id="now-we-can-do-the-same-for-this-string-as-well-and-get-our-secret-key-you-see-where-this-is-going">Now we can do the same for this string as well and get our secret key, you see where this is going..</h3>
+
+<h3 id="lets-see-how-someone-that-creates-these-antibots-would-trick-our-code-pretty-easily">Let’s see how someone that creates these antibots would trick our code pretty easily!</h3>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="cm">/*
+  function solution(){
+    let key = 'fake_key';
+    return key;
+  }
+*/</span>
+  
+<span class="kd">function</span> <span class="nx">solution</span><span class="p">()</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">key</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">secret_key</span><span class="dl">'</span><span class="p">;</span>
+  <span class="k">return</span> <span class="nx">key</span><span class="p">;</span>
+<span class="p">}</span></code></pre></figure>
+
+<h3 id="just-like-that-our-first-regex-would-have-2-matches-this-time-and-the-way-we-built-it-was-to-get-the-first-match-so-wed-end-up-with-the-fake-key-instead-of-the-real-one">Just like that, our first regex would have 2 matches this time, and the way we built it was to get the first match, so we’d end up with the fake key instead of the real one!</h3>
+<h3 id="yes-sure-someone-could-come-up-and-say-how-we-could-edit-our-regex-and-make-it-even-more-complex-to-find-the-right-key-by-detecting-if-it-is-a-comment-thats-not-the-point">Yes, sure someone could come up and say how we could edit our regex and make it even more complex to find the right key by detecting if it is a comment. That’s not the point.</h3>
+<h3 id="the-point-is-regexes-become-really-long-and-hard-and-hard-to-maintain-and-scale-and-ugly-its-just-not-the-right-approach-for-if-the-antibot-changes-much-even-tho-its-pretty-fast-i-gotta-admit-much-faster-than-what-im-about-to-show-you">The point is, regexes become really long and hard, and hard to maintain, and scale, and ugly. It’s just not the right approach for if the antibot changes much. (even tho it’s pretty fast I gotta admit, much faster than what I’m about to show you)</h3>
+
+<h3 id="thats-where-ast-comes-into-play">That’s where AST comes into play!</h3>
+<h3 id="ast-is-the-short-form-of-abstract-syntax-tree-javascript-is-basically-a-programming-language-it-has-to-be-interpreted-by-the-interpreter-the-v8-engine-also-compiles-the-javascript-to-machine-code-but-again-im-deviating-too-much">AST is the short form of Abstract Syntax Tree. Javascript is basically a programming language, it has to be interpreted by the interpreter (The V8 engine also compiles the javascript to machine code, but again, I’m deviating too much)</h3>
+<h3 id="when-it-gets-interpreted-the-interpreter-also-has-a-parser-that-transforms-all-that-javascript-into-an-ast-so-what-we-are-going-to-do-is-tokenize-our-script-and-transform-it-from-there">When it gets interpreted, the interpreter also has a parser that transforms all that javascript into an AST, so what we are going to do is “tokenize” our script and transform it from there.</h3>
+<h3 id="to-understand-tokenization-better-lets-take-a-look-at-english-when-we-speak-we-combine-words-together-into-sentences-words-can-be-of-different-types-noun-adjective-adverb-so-we-can-tokenize-each-word-and-specify-what-type-it-is-theres-more-to-english-you-can-break-down-sentences-into-clauses-and-have-a-main-and-a-secondary-clause-its-a-whole-process">To understand tokenization better let’s take a look at english. When we speak we combine WORDS together into SENTENCES. Words can be of different types NOUN, ADJECTIVE, ADVERB. So we can tokenize each word and specify what type it is. There’s more to english, you can break down sentences into clauses and have a main and a secondary clause, it’s a whole process!</h3>
+<h3 id="javascript-is-just-the-same-lets-take-for-example-a-variable-declaration-ill-be-using-httpsastexplorernet-for-seeing-the-nodes-inside-the-ast-i-shall-recommend-you-use-it-too-since-its-quite-a-powerful-tool-ill-also-be-using-the-babel-suite-for-parsing-the-script-into-ast-traversing-the-ast-and-generating-the-final-script-back-from-ast">Javascript is just the same, let’s take for example a variable declaration (I’ll be using https://astexplorer.net for seeing the nodes inside the AST, I shall recommend you use it, too, since it’s quite a powerful tool! I’ll also be using the BABEL suite for parsing the script into AST, traversing the AST and generating the final script back from AST):</h3>
+
+<p><img src="/assets/img/ANTIBOTS-PART-II-IMG-2.png" alt="alt text" /></p>
+
+<h3 id="everything-starts-with-the-file-object-inside-this-object-we-got-the-body-array-which-is-an-array-that-is-composed-of-all-the-nodes-inside-the-script-at-the-moment-we-only-have-1-node-and-thats-the-variable-declaration-in-the-left-side">Everything starts with the File object. Inside this object we got the Body array, which is an array that is composed of all the nodes inside the script. At the moment we only have 1 node and that’s the variable declaration in the left side!</h3>
+
+<p><img src="/assets/img/ANTIBOTS-PART-II-IMG-3.png" alt="alt text" /></p>
+
+<h3 id="opening-up-the-body-array-and-expanding-the-first-node-we-can-see-it-is-of-type-variabledeclaration-and-contains-an-array-of-declarations-composed-of-only-1-declaration-a-variable-declaration-lets-open-that-up-and-see-what-well-learn-about-it">Opening up the body array and expanding the first node we can see it is of type “VariableDeclaration” and contains an array of declarations composed of only 1 declaration, a variable declaration! Let’s open that up and see what we’ll learn about it…</h3>
+
+<p><img src="/assets/img/ANTIBOTS-PART-II-IMG-4.png" alt="alt text" /></p>
+
+<h3 id="as-we-can-see-the-variabledeclarator-node-is-composed-of-2-other-nodes-its-id-the-variables-name-and-the-value-it-holds">As we can see, the VariableDeclarator node is composed of 2 other nodes: its id (the variable’s name) and the value it holds.</h3>
+<h3 id="we-can-also-see-that-the-variable-name-is-a-node-of-type-identifier-while-the-value-it-holds-is-a-string-literal-peep-that-its-inside-quotes">We can also see that the variable name is a node of type Identifier while the value it holds is a string literal (Peep that it’s inside quotes)</h3>
+<h3 id="a-list-of-all-the-types-can-be-found-at-httpsbabeljsiodocsenbabel-types-which-will-help-us-when-doing-transformations-because-well-have-to-create-nodes-to-replace-other-nodes">A list of all the types can be found at: https://babeljs.io/docs/en/babel-types which will help us when doing transformations because we’ll have to create nodes to replace other nodes!</h3>
+<h3 id="so-the-basics-of-it-is-that-that-is-what-ast-is-all-about-tokenization-based-on-that-well-be-able-to-traverse-the-ast-find-specific-nodes-by-their-types-and-also-filter-them-by-the-type-of-nodes-they-contain-and-what-not-endless-possibilities-and-youll-see-it-will-actually-be-much-easier-to-comprehend-than-regex-though-this-will-come-at-the-cost-of-time-parsing-and-traversing-is-pretty-costly">So the basics of it is that, that is what AST is all about, tokenization, based on that, we’ll be able to traverse the AST, find specific nodes by their types and also filter them by the type of nodes they contain and what not, endless possibilities! And you’ll see it will actually be much easier to comprehend than regex, though this will come at the cost of time (parsing and traversing is pretty costly).</h3>
 
   </div><a class="u-url" href="/antibots/programming/2021/05/06/antibots-part-2.html" hidden></a>
 </article>
@@ -96,7 +144,7 @@
       </div>
     </div>
 
-    <div class="social-links"><ul class="social-media-list"><li><a rel="me" href="https://github.com/nerodesu017" title="nerodesu017"><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg></a></li><li><a rel="me" href="https://twitter.com/jekyllrb" title="jekyllrb"><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg></a></li></ul>
+    <div class="social-links"><ul class="social-media-list"><li><a rel="me" href="https://github.com/nerodesu017" title="nerodesu017"><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg></a></li><li><a rel="me" href="https://twitter.com/" title=""><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg></a></li></ul>
 </div>
 
   </div>
