@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>ANTIBOTS - PART V - Making sense of the Incapsula script and decoding functions | NeroAdventures</title>
+<meta name="generator" content="Jekyll v4.2.0" />
+<meta property="og:title" content="ANTIBOTS - PART V - Making sense of the Incapsula script and decoding functions" />
+<meta name="author" content="Nero" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Last time, we’ve made great progress in making the script a little more human-friendly, to say so. For the moment, let’s collapse all code block regions and see how the script looks" />
+<meta property="og:description" content="Last time, we’ve made great progress in making the script a little more human-friendly, to say so. For the moment, let’s collapse all code block regions and see how the script looks" />
+<link rel="canonical" href="/antibots/programming/2021/05/08/antibots-part-5.html" />
+<meta property="og:url" content="/antibots/programming/2021/05/08/antibots-part-5.html" />
+<meta property="og:site_name" content="NeroAdventures" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-05-08T20:17:00+03:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="ANTIBOTS - PART V - Making sense of the Incapsula script and decoding functions" />
+<script type="application/ld+json">
+{"@type":"BlogPosting","url":"/antibots/programming/2021/05/08/antibots-part-5.html","headline":"ANTIBOTS - PART V - Making sense of the Incapsula script and decoding functions","dateModified":"2021-05-08T20:17:00+03:00","datePublished":"2021-05-08T20:17:00+03:00","author":{"@type":"Person","name":"Nero"},"mainEntityOfPage":{"@type":"WebPage","@id":"/antibots/programming/2021/05/08/antibots-part-5.html"},"description":"Last time, we’ve made great progress in making the script a little more human-friendly, to say so. For the moment, let’s collapse all code block regions and see how the script looks","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="NeroAdventures" />
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">NeroAdventures</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">ANTIBOTS - PART V - Making sense of the Incapsula script and decoding functions</h1>
+    <p class="post-meta"><time class="dt-published" datetime="2021-05-08T20:17:00+03:00" itemprop="datePublished">
+        May 8, 2021
+      </time>• 
+          <span itemprop="author" itemscope itemtype="http://schema.org/Person">
+            <span class="p-author h-card" itemprop="name">Nero</span></span></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h4 id="last-time-weve-made-great-progress-in-making-the-script-a-little-more-human-friendly-to-say-so-for-the-moment-lets-collapse-all-code-block-regions-and-see-how-the-script-looks">Last time, we’ve made great progress in making the script a little more human-friendly, to say so. For the moment, let’s collapse all code block regions and see how the script looks</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-1.png" alt="img1" /></p>
+
+<h4 id="and-now-lets-plug-it-into-astexplorer-as-well-to-see-what-nodes-does-our-program-have-at-the-upper-most-level">And now, let’s plug it into <a href="https://astexplorer.net/">ASTExplorer</a> as well to see what nodes does our Program have at the upper-most level</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-2.png" alt="img2" /></p>
+
+<h4 id="so-we-can-see-we-have-8-nodes-4-of-them-are-of-variabledeclaration-type-out-of-these-4-nodes-2-of-them-have-an-init-node-of-type-arrayexpression-basically-an-array-and-the-other-2-have-an-init-node-of-type-functionexpression-basically-a-function-bound-to-that-identifier">So we can see we have 8 nodes, 4 of them are of “VariableDeclaration” type. Out of these 4 nodes, 2 of them have an init node of type “ArrayExpression” (basically, an array), and the other 2 have an init node of type “FunctionExpression” (basically, a function bound to that Identifier)</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-3.png" alt="img3" /></p>
+
+<h4 id="the-remaining-4-nodes-are-of-type-expressionstatement-and-are-in-turn-iifes-weve-also-talked-about-these-in-the-previous-tutorials">The remaining 4 nodes are of type “ExpressionStatement” and are, in turn, IIFE’s (we’ve also talked about these in the previous tutorials)</h4>
+
+<h4 id="what-is-interesting-is-the-first-iife-after-each-array-declaration">What is interesting, is the first IIFE after each Array declaration:</h4>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">var</span> <span class="nx">aardvark</span> <span class="o">=</span> <span class="p">[</span><span class="dl">"</span><span class="s2">IcKvw4UDGRdTwrI=</span><span class="dl">"</span><span class="p">,</span> <span class="dl">"</span><span class="s2">wo1eJMO/EQnCpQXDokdqTsKvw43DoWnDjj0O</span><span class="dl">"</span><span class="p">,</span> <span class="p">...,</span> <span class="dl">"</span><span class="s2">IMKZw5fDpMO3</span><span class="dl">"</span><span class="p">];</span>
+
+<span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">calf</span><span class="p">,</span> <span class="nx">cub</span><span class="p">)</span> <span class="p">{...</span>
+<span class="p">})(</span><span class="nx">aardvark</span><span class="p">,</span> <span class="mi">301</span><span class="p">);</span></code></pre></figure>
+
+<h4 id="as-you-can-see-the-iife-after-the-declaration-of-the-first-array-gets-passed-as-parameters-the-array-itself-and-a-numericliteral">As you can see, the IIFE after the declaration of the first array gets passed as parameters the array itself and a NumericLiteral</h4>
+
+<h4 id="as-you-know-in-js-parameters-get-passed-by-value-the-problem-is-objects-are-passed-by-reference-from-my-knowledge-dont-forget-to-contact-me-to-correct-it-in-case-im-wrong-when-you-pass-an-object-as-a-parameter-it-is-passed-by-value-as-well-kinda-its-reference-is-passed-by-value-but-the-elements-inside-it-can-be-edited-as-you-please-so-this-function-could-actually-be-used-as-a-decodingencoding-function-on-the-elements-of-the-array-it-gets-passed-as-argument">As you know, in JS, parameters get passed by value. The problem is, objects are passed by reference. From my knowledge (Don’t forget to contact me to correct it in case I’m wrong), when you pass an object as a parameter, it is passed by value, as well, kinda.. Its reference is passed by value, but the elements inside it can be edited as you please, so this function could actually be used as a decoding/encoding function on the elements of the Array it gets passed as argument!</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-4.png" alt="img4" /></p>
+
+<h4 id="hmmm-nothing-too-interesting-we-can-see-an-object-declaration-alligator-with-some-interesting-properties-data-setcookie-removecookie-but-if-we-take-a-look-at-removecookie-we-can-see-it-only-returns-a-stringliteral-what-is-this-maybe-something-to-throw-us-off-well-as-youll-later-see-thats-exactly-what-it-is-we-want-to-make-progress-and-heres-not-the-place-where-we-can-make-a-lot-of-it-so-right-now-well-go-on-to-the-next-node">Hmmm, nothing too interesting, we can see an object declaration (“alligator”) with some interesting properties (“data”, “setCookie”, “removeCookie”), but if we take a look at “removeCookie” we can see it only returns a StringLiteral??? What is this??? Maybe.. Something to throw us off? Well, as you’ll later see, that’s exactly what it is! We want to make progress and here’s not the place where we can make a lot of it, so right now we’ll go on to the next node.</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-5.png" alt="img5" /></p>
+
+<h4 id="and-that-node-is-the-function-declaration-per-se-from-a-glance-we-can-see-something-interesting-theres-a-declaration-of-the-alphabet-peep-line-83-variable-farrow-and-also-a-stringliteral-with-the-value-rc4-peep-line-182-boar--kittenrc4">And that node is the function declaration (per-se)! From a glance we can see something interesting, there’s a declaration of the alphabet (peep line 83, variable “farrow”) and also a StringLiteral with the value “rc4” (peep line 182, “boar = kitten<a href="boar, chick">“rc4”</a>;”)</h4>
+<h4 id="lets-search-the-web-with-a-few-keywords">Let’s search the web with a few keywords!</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-6.png" alt="img6" /></p>
+
+<h4 id="so-rc4-is-a-type-of-encryption-if-you-are-willing-to-dig-deeper-and-research-a-bit-about-rc4-youll-find-out-it-actually-is-a-symmetric-encryption-algorithm-this-means-that-the-encryption-key-is-the-same-as-the-decryption-key-so-any-key-we-will-find-can-be-used-for-both-encrypting-and-decrypting">So RC4 is a type of encryption! If you are willing to dig deeper and research a bit about RC4, you’ll find out it actually is a Symmetric Encryption Algorithm. This means that the encryption key is the same as the decryption key. So any key we will find can be used for both encrypting and decrypting!</h4>
+
+<h4 id="lets-follow-that-link-and-see-where-it-guides-us">Let’s follow that link and see where it guides us!</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-7.png" alt="img7" /></p>
+
+<h4 id="this-is-what-the-implementation-in-javascript-of-the-rc4-algorithm-looks-like-interesting-lets-dig-through-our-code-see-where-and-if-we-can-find-something-like-this">This is what the implementation in javascript of the RC4 algorithm looks like, interesting, let’s dig through our code see where, and if, we can find something like this</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-8.png" alt="img8" /></p>
+
+<h4 id="and-would-you-look-at-that-line-114-from-our-script-looks-like-line-15-from-the-github-script-so-this-whole-big-function-kitten-must-hold-an-rc4-encryptiondecryption-algorithm">And would you look at that? Line 114 from our script looks like line 15 from the github script, so this whole big function (“kitten”) must hold, an RC4 encryption/decryption algorithm!</h4>
+
+<h4 id="but-wait-a-second-remember-that-long-alphabet-string-we-found-what-was-it-all-about-lets-search-the-web-for-that-too-see-if-we-can-find-a-match">But wait a second, remember that long alphabet string we found? What was it all about, let’s search the web for that too, see if we can find a match</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-9.png" alt="img9" /></p>
+
+<h4 id="ooooooh-so-its-the-base64-encoding-algorithm-or-maybe-decoding-if-we-go-a-few-lines-down-we-can-see-atob-as-a-stringliteral-spending-some-time-in-the-browser-you-would-know-that-atob-is-a-method-to-decode-base64-so-we-got-decoding-in-here-too">Ooooooh, so it’s the base64 encoding algorithm, or maybe decoding? If we go a few lines down we can see “atob” as a StringLiteral, spending some time in the browser, you would know that <a href="https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/atob">atob</a> is a method to decode base64! So we got decoding in here too.</h4>
+<h4 id="wed-want-to-use-this-whole-function-when-we-find-references-to-it-in-our-script-and-replace-the-specific-calls-to-it-with-the-decoded-stringsvalues-but-wouldnt-it-break-if-the-atob-function-is-just-in-the-browser">We’d want to use this whole function when we find references to it in our script, and replace the specific calls to it with the decoded strings/values, but wouldn’t it break if the “atob” function is just in the browser?</h4>
+<h4 id="well-if-we-spend-some-time-we-can-see-that-the-script-first-checks-if-the-atob-method-is-defined-if-not-it-defines-it-what-a-blessing-though-dont-worry-ive-packed-some-browser-stuff-in-a-script-that-ill-later-share-with-you-browsersandboxjs-that-will-help-us-in-some-situations-where-it-specifically-uses-the-browser-methods-and-weve-got-no-other-choice-than-to-implement-them-ourselves">Well, if we spend some time we can see that the script first checks if the atob method is defined, if not, it defines it! What a blessing! (Though, don’t worry, I’ve packed some browser stuff in a script that I’ll later share with you “browsersandbox.js” that will help us in some situations where it specifically uses the browser methods and we’ve got no other choice than to implement them ourselves)</h4>
+
+<h4 id="now-lets-go-back-a-little-to-our-iife-between-the-array-declaration-and-decoding-function-declaration">Now, let’s go back a little to our IIFE between the array declaration and decoding function declaration</h4>
+<h4 id="we-knew-that-the-array-gets-passed-as-an-argument-along-with-a-numericliteral-which-could-be-an-offset">We knew that the array gets passed as an argument, along with a NumericLiteral (which could be an offset)</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-10.png" alt="img10" /></p>
+
+<h4 id="lets-see-where-our-calf-array-and-cub-numericliteral-are-used-calf-is-used-in-a-while-loop-line-5-which-makes-use-of-the-push-and-shift-methods-on-the-array-weve-provided-so-basically-kind-of-rearranges-the-elements-in-the-array-we-can-later-see-that-this-while-loop-is-part-of-a-function-bound-to-the-identifier-named-addax-line-4-this-identifier-is-getting-referenced-at-line-49-when-it-is-passed-as-an-argument-to-bat-we-could-go-on-and-on-but-in-the-end-well-find-out-that-this-while-loop-gets-executed-when-the-js-engine-interpreter-gets-to-it-so-this-iife-is-needed-as-well-otherwise-the-program-breaks">Let’s see where our calf (array) and cub (numericliteral) are used: calf is used in a while loop (line 5) which makes use of the push and shift methods on the array we’ve provided (so basically, kind of rearranges the elements in the array). We can later see that this while loop is part of a function bound to the Identifier named ‘addax’ (line 4). This identifier is getting referenced at line 49 when it is passed as an argument to bat. We could go on and on, but in the end, we’ll find out that this while loop gets executed when the JS Engine Interpreter gets to it, so this IIFE is needed as well, otherwise the program breaks.</h4>
+
+<h4 id="ok-lets-remember-everything-weve-learned-so-far-the-script-has-8-main-nodes-2-of-them-are-array-declarations-and-2-other-are-function-declarations-for-decoding-array-elements-most-probably-in-turn-well-see-this-is-true-besides-this-the-iife-between-each-array-and-function-declarations-is-needed-to-rearrange-the-elements-of-the-array">Ok, let’s remember everything we’ve learned so far, the script has 8 main nodes, 2 of them are array declarations and 2 other are function declarations for decoding array elements most probably (in turn we’ll see this is true). Besides this, the IIFE between each array and function declarations is needed to rearrange the elements of the array.</h4>
+
+<h4 id="what-we-can-do-now-is-take-these-6-nodes-2-array-declarations-2-iifes-and-2-function-declarations-copy-them-and-create-a-new-program-which-well-use-as-a-helper-to-decode-calls-to-the-functions-in-the-script">What we can do now, is take these 6 nodes (2 array declarations, 2 IIFE’s and 2 function declarations), copy them, and create a new program which we’ll use as a helper to decode calls to the functions in the script</h4>
+<h4 id="what-i-mean-by-call-functions-is-do-you-remember-that-our-function-declarations-identifier-was-called-kitten-the-first-one">What I mean by call functions is, do you remember that our function declaration’s Identifier was called kitten? (the first one)</h4>
+<h4 id="lets-search-for-where-in-our-script-is-kitten-referenced">Let’s search for where in our script is ‘kitten’ referenced</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-11.png" alt="img11" /></p>
+
+<h4 id="as-we-can-see-on-line-224-it-is-referenced-and-if-we-would-plug-that-into-astexplorer-wed-find-out-that-this-node-is-called-a-callexpression-node-and-the-kitten-function-returns-a-value-decoded-from-our-array">As we can see, on line 224 it is referenced and if we would plug that into <a href="https://astexplorer.net/">ASTExplorer</a> we’d find out that this node is called a CallExpression node. And the kitten function returns a value decoded from our array!</h4>
+
+<h4 id="so-lets-take-these-6-nodes-and-use-them-to-replace-the-call-to-the-decoding-functions-with-the-resulting-value">So let’s take these 6 nodes and use them to replace the call to the decoding functions with the resulting value!</h4>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">let</span> <span class="nx">decipheringNodes</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">node</span> <span class="k">of</span> <span class="nx">AST</span><span class="p">.</span><span class="nx">program</span><span class="p">.</span><span class="nx">body</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">VariableDeclaration</span><span class="dl">'</span> <span class="o">||</span>
+    <span class="p">(</span>
+      <span class="nx">node</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">ExpressionStatement</span><span class="dl">'</span> <span class="o">&amp;&amp;</span>
+      <span class="nx">node</span><span class="p">.</span><span class="nx">expression</span><span class="p">.</span><span class="nx">arguments</span><span class="p">.</span><span class="nx">length</span> <span class="o">!==</span> <span class="mi">0</span>
+    <span class="p">))</span> <span class="nx">decipheringNodes</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">node</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="kd">let</span> <span class="nx">decipher</span> <span class="o">=</span> <span class="nx">generate</span><span class="p">({</span>
+  <span class="na">type</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Program</span><span class="dl">"</span><span class="p">,</span>
+  <span class="na">body</span><span class="p">:</span> <span class="nx">decipheringNodes</span>
+<span class="p">},</span> <span class="nx">testing_opts</span><span class="p">).</span><span class="nx">code</span><span class="p">;</span></code></pre></figure>
+
+<h4 id="lets-go-through-the-script-first-the-programs-body-is-an-array-so-well-create-an-array-where-well-hold-our-nodes-decipheringnodes-second-we-search-for-the-node-type-to-be-of-type-variabledeclaration-or-expressionstatement-but-if-it-is-an-expressionstatement-to-have-arguments-passed-to-it-you-can-look-in-astexplorer-to-see-that-this-is-what-differentiates-the-nodes-we-care-about-and-the-ones-we-dont">Let’s go through the script! First, the program’s body is an array, so we’ll create an array where we’ll hold our nodes “decipheringNodes”, second, we search for the node type to be of type “VariableDeclaration” or “ExpressionStatement” but if it is an “ExpressionStatement” to have arguments passed to it (you can look in <a href="https://astexplorer.net/">ASTExplorer</a> to see that this is what differentiates the nodes we care about, and the ones we don’t)</h4>
+<h4 id="another-approach-would-be-to-get-the-first-3-nodes-skip-a-node-and-then-the-next-3-as-well-im-guessing-this-could-work-too">Another approach would be to get the first 3 nodes, skip a node, and then the next 3 as well. I’m guessing this could work too!</h4>
+<h4 id="next-we-create-another-object-named-decipher-from-which-will-have-the-value-of-the-new-generated-program-as-a-string">Next, we create another object named “decipher” from which will have the value of the new generated program as a string</h4>
+<h4 id="why-have-i-done-this-the-way-ive-done-it">Why have I done this the way I’ve done it?</h4>
+<ul>
+  <li>
+    <h4 id="when-well-use-eval-eval-takes-only-strings-and-evaluates-them-so-thats-the-reason-well-need-it-as-a-string">When we’ll use eval(), <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval">eval</a> takes only strings and evaluates them, so that’s the reason we’ll need it as a string</h4>
+  </li>
+  <li>
+    <h4 id="when-generating-the-program-we-used-the-testing-options-ive-created-for-you-that-is-because-as-youve-seen-the-removecookie-function-returned-a-stringliteral-well-that-function-is-being-used-to-see-if-the-program-was-beautified-ive-run-into-this-issue-and-it-made-me-go-into-an-infinite-loop-so-ive-curated-that-for-you-already">When generating the program, we used the testing options I’ve created for you, that is because, as you’ve seen, the “removeCookie” function returned a StringLiteral, well, that function is being used to see if the program was beautified, I’ve run into this issue and it made me go into an infinite loop, so I’ve curated that for you already!</h4>
+  </li>
+  <li>
+    <h4 id="as-im-going-to-show-you-next-we-have-to-do-a-few-tweaks-well-use-the-script-generated-from-these-nodes-in-nodejs-the-var-keyword-in-nodejs-i-mean-its-behavior-is-different-than-in-the-browser-well-replace-it-with-making-every-variable-use-the-global-prefix-if-you-want-to-make-a-variable-global-in-the-browser-the-var-keyword-is-enough-var-x--3-but-in-nodejs-global-is-the-way-to-go-globalx--3">As I’m going to show you next, we have to do a few tweaks, we’ll use the script generated from these nodes in NodeJS. The “var” keyword in NodeJS, I mean its behavior, is different than in the browser. We’ll replace it with making every variable use the “global.” prefix. If you want to make a variable global in the browser, the VAR keyword is enough (<code class="language-plaintext highlighter-rouge">var x = 3</code>), but in NodeJS “global” is the way to go (<code class="language-plaintext highlighter-rouge">global.x = 3</code>)!</h4>
+  </li>
+</ul>
+
+<h4 id="lets-get-to-work-well-replace-the-above-block-of-code-in-our-script-with">Let’s get to work! We’ll replace the above block of code in our script with:</h4>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">let</span> <span class="nx">decipheringNodes</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">node</span> <span class="k">of</span> <span class="nx">AST</span><span class="p">.</span><span class="nx">program</span><span class="p">.</span><span class="nx">body</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">VariableDeclaration</span><span class="dl">'</span> <span class="o">||</span>
+    <span class="p">(</span>
+      <span class="nx">node</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">ExpressionStatement</span><span class="dl">'</span> <span class="o">&amp;&amp;</span>
+      <span class="nx">node</span><span class="p">.</span><span class="nx">expression</span><span class="p">.</span><span class="nx">arguments</span><span class="p">.</span><span class="nx">length</span> <span class="o">!==</span> <span class="mi">0</span>
+    <span class="p">))</span> <span class="nx">decipheringNodes</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">node</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="kd">let</span> <span class="nx">decipher</span> <span class="o">=</span> <span class="nx">generate</span><span class="p">({</span>
+  <span class="na">type</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Program</span><span class="dl">"</span><span class="p">,</span>
+  <span class="na">body</span><span class="p">:</span> <span class="nx">decipheringNodes</span>
+<span class="p">},</span> <span class="nx">testing_opts</span><span class="p">).</span><span class="nx">code</span><span class="p">;</span>
+<span class="kd">const</span> <span class="nx">decipherAST</span> <span class="o">=</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">decipher</span><span class="p">);</span>
+
+<span class="kd">const</span> <span class="nx">makeDeclarationsGlobalForEvalVisitor</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">VariableDeclaration</span><span class="p">(</span><span class="nx">path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">newDeclarations</span> <span class="o">=</span> <span class="p">[];</span>
+    <span class="kd">let</span> <span class="nx">kind</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">kind</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">kind</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">var</span><span class="dl">'</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">declaration</span> <span class="k">of</span> <span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">declarations</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">switch</span> <span class="p">(</span><span class="nx">declaration</span><span class="p">.</span><span class="nx">id</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
+          <span class="k">case</span> <span class="dl">"</span><span class="s2">Identifier</span><span class="dl">"</span><span class="p">:</span>
+            <span class="kd">let</span> <span class="nx">left_side</span> <span class="o">=</span> <span class="nx">types</span><span class="p">.</span><span class="nx">memberExpression</span><span class="p">(</span><span class="nx">types</span><span class="p">.</span><span class="nx">identifier</span><span class="p">(</span><span class="dl">'</span><span class="s1">global</span><span class="dl">'</span><span class="p">),</span> <span class="nx">types</span><span class="p">.</span><span class="nx">identifier</span><span class="p">(</span><span class="nx">declaration</span><span class="p">.</span><span class="nx">id</span><span class="p">.</span><span class="nx">name</span><span class="p">));</span>
+            <span class="kd">let</span> <span class="nx">right_side</span> <span class="o">=</span> <span class="p">(</span><span class="nx">declaration</span><span class="p">.</span><span class="nx">init</span> <span class="o">===</span> <span class="kc">null</span><span class="p">)</span> <span class="p">?</span> <span class="nx">types</span><span class="p">.</span><span class="nx">nullLiteral</span><span class="p">()</span> <span class="p">:</span> <span class="nx">declaration</span><span class="p">.</span><span class="nx">init</span><span class="p">;</span>
+            <span class="kd">let</span> <span class="nx">varToGlobal</span> <span class="o">=</span> <span class="nx">types</span><span class="p">.</span><span class="nx">expressionStatement</span><span class="p">(</span>
+              <span class="nx">types</span><span class="p">.</span><span class="nx">assignmentExpression</span><span class="p">(</span><span class="dl">'</span><span class="s1">=</span><span class="dl">'</span><span class="p">,</span> <span class="nx">left_side</span><span class="p">,</span> <span class="nx">right_side</span><span class="p">));</span>
+            <span class="nx">newDeclarations</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">varToGlobal</span><span class="p">);</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+      <span class="nx">path</span><span class="p">.</span><span class="nx">replaceWithMultiple</span><span class="p">(</span><span class="nx">newDeclarations</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nx">traverse</span><span class="p">(</span><span class="nx">decipherAST</span><span class="p">,</span> <span class="nx">makeDeclarationsGlobalForEvalVisitor</span><span class="p">);</span>
+<span class="nx">decipher</span> <span class="o">=</span> <span class="nx">generate</span><span class="p">(</span><span class="nx">decipherAST</span><span class="p">,</span> <span class="nx">testing_opts</span><span class="p">).</span><span class="nx">code</span><span class="p">;</span></code></pre></figure>
+
+<h4 id="what-ive-added-here-is-the-makedeclarationsglobalforevalvisitor-it-goes-through-every-variable-declaration-in-our-new-program-checks-to-see-if-it-is-declared-with-the-var-keyword-so-we-know-to-make-it-global-goes-through-every-declaration-in-it-we-could-have-multiple-declarations-like-this-var-x--3-y--4-z--5-and-it-just-replaces-the-var-with-global-as-ive-said-earlier">What I’ve added here is the makeDeclarationsGlobalForEvalVisitor. It goes through every variable declaration in our new program checks to see if it is declared with the ‘var’ keyword (so we know to make it global), goes through every declaration in it (We could have multiple declarations like this: <code class="language-plaintext highlighter-rouge">var x = 3, y = 4, z = 5</code>) and it just replaces the var with “global.” as I’ve said earlier.</h4>
+
+<h4 id="whats-new-here-is-the-use-of-the-babeltypes-package-this-package-is-used-to-create-new-nodes-from-scratch-when-we-created-our-new-program-we-had-to-make-an-object-with-2-properties-program-and-body-types-creates-them-for-us-and-also-tells-us-what-arguments-to-pass">What’s new here, is the use of the “@babel/types” package, this package is used to create new nodes from scratch! (When we created our new program we had to make an object with 2 properties “Program” and “body”, “types” creates them for us! And also tells us what arguments to pass!)</h4>
+
+<h4 id="we-create-the-left-side-value-globalidentifier_name-the-right-side-if-there-is-any-create-a-node-of-type-expressionstatement-its-not-a-variabledeclaration-anymore-and-push-it-to-the-new-nodes-next-we-replace-the-old-declarations-with-the-ones-pushed-to-our-array">We create the left side value (global.IDENTIFIER_NAME), the right side (if there is any), create a node of type ExpressionStatement (it’s not a variabledeclaration anymore!) and push it to the new nodes, next, we replace the old declarations with the ones pushed to our array!</h4>
+
+<h4 id="lets-get-to-our-goal-lets-replace-the-callexpressions-but-before-that-we-gotta-jump-in-astexplorer-and-see-how-the-callexpression-nodes-we-want-to-replace-look">Let’s get to our goal! Let’s replace the CallExpressions! But before that, we gotta jump in <a href="https://astexplorer.net/">ASTExplorer</a> and see how the CallExpression nodes we want to replace look</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-12.png" alt="img12" /></p>
+
+<h4 id="so-what-we-can-see-is-that-the-callexpression-nodes-we-need-are-to-be-filtered-as-following">So what we can see is that the CallExpression nodes we need are to be filtered as following:</h4>
+<ul>
+  <li>
+    <h4 id="they-need-to-have-2-arguments">They need to have 2 arguments</h4>
+  </li>
+  <li>
+    <h4 id="the-first-argument-needs-to-be-a-stringliteral-this-represents-the-elements-index-in-the-array">The first argument needs to be a StringLiteral (this represents the element’s index in the array)</h4>
+  </li>
+  <li>
+    <h4 id="the-second-argument-needs-to-be-a-stringliteral-as-well-this-represents-the-decoding-key">The second argument needs to be a StringLiteral, as well (this represents the decoding key)</h4>
+    <ul>
+      <li>
+        <h4 id="if-they-are-not-both-stringliterals-they-reference-other-variables-and-can-break-our-program-for-now-we-can-replace-most-calls-like-this">If they are not both StringLiterals they reference other variables and can break our program, for now we can replace most calls like this</h4>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <h4 id="the-callee-node-is-of-type-identifier">The callee node is of type “Identifier”</h4>
+  </li>
+  <li>
+    <h4 id="the-first-argument-needs-to-start-with-0x-all-are-hex-values">The first argument needs to start with “0x” (all are hex values)</h4>
+  </li>
+</ul>
+
+<h4 id="you-can-gather-all-this-by-using-ctrlf-in-your-script-and-searching-for-all-the-calls-to-create-a-pattern">You can gather all this by using ctrl+f in your script and searching for all the calls to create a pattern</h4>
+<h4 id="the-code-looks-something-like-this">The code looks something like this:</h4>
+
+<figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">const</span> <span class="nx">replaceCallExpressionRC4Visitor</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">CallExpression</span><span class="p">(</span><span class="nx">path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">arguments</span><span class="p">.</span><span class="nx">length</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">&amp;&amp;</span>
+      <span class="nx">types</span><span class="p">.</span><span class="nx">isStringLiteral</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">arguments</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;&amp;</span>
+      <span class="nx">types</span><span class="p">.</span><span class="nx">isStringLiteral</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">arguments</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&amp;&amp;</span>
+      <span class="nx">types</span><span class="p">.</span><span class="nx">isIdentifier</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+      <span class="nb">String</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">.</span><span class="nx">arguments</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">value</span><span class="p">).</span><span class="nx">startsWith</span><span class="p">(</span><span class="dl">"</span><span class="s2">0x</span><span class="dl">"</span><span class="p">))</span> <span class="p">{</span>
+      <span class="kd">let</span> <span class="nx">newNode</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="na">type</span><span class="p">:</span> <span class="dl">"</span><span class="s2">StringLiteral</span><span class="dl">"</span><span class="p">,</span>
+        <span class="na">value</span><span class="p">:</span> <span class="nb">eval</span><span class="p">(</span><span class="nx">decipher</span> <span class="o">+</span> <span class="s2">`;</span><span class="p">${</span><span class="nx">generate</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">node</span><span class="p">).</span><span class="nx">code</span><span class="p">}</span><span class="s2">`</span><span class="p">)</span>
+      <span class="p">};</span>
+      <span class="nx">path</span><span class="p">.</span><span class="nx">replaceWith</span><span class="p">(</span><span class="nx">newNode</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nx">traverse</span><span class="p">(</span><span class="nx">AST</span><span class="p">,</span> <span class="nx">replaceCallExpressionRC4Visitor</span><span class="p">);</span></code></pre></figure>
+
+<h4 id="here-ive-created-the-new-node-not-using-types-just-to-show-you-that-it-works-as-well-though-the-use-of-the-babeltypes-package-is-recommended-whenever-you-can-use-it">Here, I’ve created the new node not using “types” just to show you that it works as well, though the use of the “@babel/types” package is recommended whenever you can use it!</h4>
+<h4 id="we-also-make-use-of-pathreplacewith-method-with-lets-us-replace-the-current-node-with-a-new-one">We also make use of path.replaceWith() method with lets us replace the current node with a new one!</h4>
+<h4 id="oh-and-one-more-thing-when-evaluating-make-sure-that-between-any-scripts-in-our-case-the-deciphering-script-and-the-generated-script-from-the-callexpression-we-are-currently-at-we-gotta-generate-that-and-evaluate-it-too-so-we-get-returned-the-actual-value-we-have-a--scripts-might-collide-and-not-have-an-ending-semi-colon-so-we-gotta-make-sure-it-doesnt-throw-an-error-because-of-this">Oh, and one more thing, when evaluating, make sure that between any scripts (in our case the “decipher”ing script and the generated script from the CallExpression we are currently at (we gotta generate that and evaluate it, too, so we get returned the actual value) we have a ‘;’. Scripts might collide and not have an ending semi-colon so we gotta make sure it doesn’t throw an error because of this)</h4>
+
+<h4 id="for-la-grande-finale-lets-run-our-code-and-see-what-our-script-looks-like">For la grande finale, let’s run our code and see what our script looks like!</h4>
+
+<p><img src="/assets/img/ANTIBOTS-PART-V-IMG-13.png" alt="img13" /></p>
+
+<h4 id="much-much-better-theres-only-a-few-calls-well-deal-with-at-the-end-of-the-tutorials-till-next-time">Much, much better, there’s only a few calls we’ll deal with at the end of the tutorials! Till next time!</h4>
+
+  </div><a class="u-url" href="/antibots/programming/2021/05/08/antibots-part-5.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+        <p class="feed-subscribe">
+          <a href="/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p>
+        <ul class="contact-list">
+          <li class="p-name">Nero</li>
+          <li><a class="u-email" href="mailto:nerodesu017@gmail.com">nerodesu017@gmail.com</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <p>The Adventures of a Rustacean named Nero</p>
+      </div>
+    </div>
+
+    <div class="social-links"><ul class="social-media-list"><li><a rel="me" href="https://github.com/nerodesu017" title="nerodesu017"><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg></a></li><li><a rel="me" href="https://twitter.com/" title=""><svg class="svg-icon grey"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg></a></li></ul>
+</div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
