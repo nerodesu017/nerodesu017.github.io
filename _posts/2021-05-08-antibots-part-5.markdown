@@ -1,0 +1,203 @@
+---
+layout: post
+title:  ANTIBOTS - PART V - Making sense of the Incapsula script and decoding functions
+author: Nero
+date:   2021-05-08 20:17:00 +0300
+categories: [antibots, programming]
+tags: [antibot, antibots, programming, ast, manipulation]
+---
+
+#### Last time, we've made great progress in making the script a little more human-friendly, so to say. For the moment, let's collapse all code block regions and see how the script looks
+
+![img1](/assets/img/ANTIBOTS-PART-V-IMG-1.png)
+
+#### And now, let's plug it into [ASTExplorer](https://astexplorer.net/) as well to see what nodes does our Program have at the upper-most level
+
+![img2](/assets/img/ANTIBOTS-PART-V-IMG-2.png)
+
+#### So we can see we have 8 nodes, 4 of them are of "VariableDeclaration" type. Out of these 4 nodes, 2 of them have an init node of type "ArrayExpression" (basically, an array), and the other 2 have an init node of type "FunctionExpression" (basically, a function bound to that Identifier)
+
+![img3](/assets/img/ANTIBOTS-PART-V-IMG-3.png)
+
+#### The remaining 4 nodes are of type "ExpressionStatement" and are, in turn, IIFE's (we've also talked about these in the previous tutorials)
+
+#### What is interesting, is the first IIFE after each Array declaration:
+
+{% highlight js %}
+
+var aardvark = ["IcKvw4UDGRdTwrI=", "wo1eJMO/EQnCpQXDokdqTsKvw43DoWnDjj0O", ..., "IMKZw5fDpMO3"];
+
+(function (calf, cub) {...
+})(aardvark, 301);
+
+{% endhighlight %}
+
+#### As you can see, the IIFE after the declaration of the first array gets passed as parameters the array itself and a NumericLiteral
+
+#### As you know, in JS, parameters get passed by value. The problem is, even though they are passed by value, when passing in objects, the objects' address is passed by value, so you access them without copying them. So this function could actually be used as a decoding/encoding function on the elements of the Array it gets passed as argument!
+
+![img4](/assets/img/ANTIBOTS-PART-V-IMG-4.png)
+
+#### Hmmm, nothing too interesting, we can see an object declaration ("alligator") with some interesting properties ("data", "setCookie", "removeCookie"), but if we take a look at "removeCookie" we can see it only returns a StringLiteral??? What is this??? Maybe.. Something to throw us off? Well, as you'll later see, that's exactly what it is! We want to make progress and here's not the place where we can make a lot of it, so right now we'll go on to the next node.
+
+![img5](/assets/img/ANTIBOTS-PART-V-IMG-5.png)
+
+#### And that node is the function declaration (per-se)! From a glance we can see something interesting, there's a declaration of the alphabet (peep line 83, variable "farrow") and also a StringLiteral with the value "rc4" (peep line 182, "boar = kitten["rc4"](boar, chick);")
+#### Let's search the web with a few keywords! 
+
+![img6](/assets/img/ANTIBOTS-PART-V-IMG-6.png)
+
+#### So RC4 is a type of encryption! If you are willing to dig deeper and research a bit about RC4, you'll find out it actually is a Symmetric Encryption Algorithm. This means that the encryption key is the same as the decryption key. So any key we will find can be used for both encrypting and decrypting!
+
+#### Let's follow that link and see where it guides us!
+
+![img7](/assets/img/ANTIBOTS-PART-V-IMG-7.png)
+
+#### This is what the implementation in javascript of the RC4 algorithm looks like, interesting, let's dig through our code see where, and if, we can find something like this
+
+![img8](/assets/img/ANTIBOTS-PART-V-IMG-8.png)
+
+#### And would you look at that? Line 114 from our script looks like line 15 from the github script, so this whole big function ("kitten") must hold, an RC4 encryption/decryption algorithm!
+
+#### But wait a second, remember that long alphabet string we found? What was it all about, let's search the web for that too, see if we can find a match
+
+![img9](/assets/img/ANTIBOTS-PART-V-IMG-9.png)
+
+#### Ooooooh, so it's the base64 encoding algorithm, or maybe decoding? If we go a few lines down we can see "atob" as a StringLiteral, spending some time in the browser, you would know that [atob](https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/atob) is a method to decode base64! So we got decoding in here too.
+#### We'd want to use this whole function when we find references to it in our script, and replace the specific calls to it with the decoded strings/values, but wouldn't it break if the "atob" function is just in the browser?
+#### Well, if we spend some time we can see that the script first checks if the atob method is defined, if not, it defines it! What a blessing! (Though, don't worry, I've packed some browser stuff in a script that I'll later share with you "browsersandbox.js" that will help us in some situations where it specifically uses the browser methods and we've got no other choice than to implement them ourselves)
+
+#### Now, let's go back a little to our IIFE between the array declaration and decoding function declaration
+#### We knew that the array gets passed as an argument, along with a NumericLiteral (which could be an offset)
+
+![img10](/assets/img/ANTIBOTS-PART-V-IMG-10.png)
+
+#### Let's see where our calf (array) and cub (numericliteral) are used: calf is used in a while loop (line 5) which makes use of the push and shift methods on the array we've provided (so basically, kind of rearranges the elements in the array). We can later see that this while loop is part of a function bound to the Identifier named 'addax' (line 4). This identifier is getting referenced at line 49 when it is passed as an argument to bat. We could go on and on, but in the end, we'll find out that this while loop gets executed when the JS Engine Interpreter gets to it, so this IIFE is needed as well, otherwise the program breaks.
+
+#### Ok, let's remember everything we've learned so far, the script has 8 main nodes, 2 of them are array declarations and 2 other are function declarations for decoding array elements most probably (in turn we'll see this is true). Besides this, the IIFE between each array and function declarations is needed to rearrange the elements of the array.
+
+#### What we can do now, is take these 6 nodes (2 array declarations, 2 IIFE's and 2 function declarations), copy them, and create a new program which we'll use as a helper to decode calls to the functions in the script
+#### What I mean by call functions is, do you remember that our function declaration's Identifier was called kitten? (the first one)
+#### Let's search for where in our script is 'kitten' referenced
+
+![img11](/assets/img/ANTIBOTS-PART-V-IMG-11.png)
+
+#### As we can see, on line 224 it is referenced and if we would plug that into [ASTExplorer](https://astexplorer.net/) we'd find out that this node is called a CallExpression node. And the kitten function returns a value decoded from our array!
+
+#### So let's take these 6 nodes and use them to replace the call to the decoding functions with the resulting value!
+
+{% highlight js %}
+let decipheringNodes = [];
+for (let node of AST.program.body) {
+  if (node.type === 'VariableDeclaration' ||
+    (
+      node.type === 'ExpressionStatement' &&
+      node.expression.arguments.length !== 0
+    )) decipheringNodes.push(node);
+}
+let decipher = generate({
+  type: "Program",
+  body: decipheringNodes
+}, testing_opts).code;
+{% endhighlight %}
+
+#### Let's go through the script! First, the program's body is an array, so we'll create an array where we'll hold our nodes "decipheringNodes", second, we search for the node type to be of type "VariableDeclaration" or "ExpressionStatement" but if it is an "ExpressionStatement" to have arguments passed to it (you can look in [ASTExplorer](https://astexplorer.net/) to see that this is what differentiates the nodes we care about, and the ones we don't)
+#### Another approach would be to get the first 3 nodes, skip a node, and then the next 3 as well. I'm guessing this could work too!
+#### Next, we create another object named "decipher" from which will have the value of the new generated program as a string
+#### Why have I done this the way I've done it?
+  - #### When we'll use eval(), [eval](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval) takes only strings and evaluates them, so that's the reason we'll need it as a string
+  - #### When generating the program, we used the testing options I've created for you, that is because, as you've seen, the "removeCookie" function returned a StringLiteral, well, that function is being used to see if the program was beautified, I've run into this issue and it made me go into an infinite loop, so I've curated that for you already!
+  - #### As I'm going to show you next, we have to do a few tweaks, we'll use the script generated from these nodes in NodeJS. The "var" keyword in NodeJS, I mean its behavior, is different than in the browser. We'll replace it with making every variable use the "global." prefix. If you want to make a variable global in the browser, the VAR keyword is enough (`var x = 3`), but in NodeJS "global" is the way to go (`global.x = 3`)!
+
+#### Let's get to work! We'll replace the above block of code in our script with:
+
+{% highlight js %}
+let decipheringNodes = [];
+for (let node of AST.program.body) {
+  if (node.type === 'VariableDeclaration' ||
+    (
+      node.type === 'ExpressionStatement' &&
+      node.expression.arguments.length !== 0
+    )) decipheringNodes.push(node);
+}
+let decipher = generate({
+  type: "Program",
+  body: decipheringNodes
+}, testing_opts).code;
+const decipherAST = parser.parse(decipher);
+
+const makeDeclarationsGlobalForEvalVisitor = {
+  VariableDeclaration(path) {
+    let newDeclarations = [];
+    let kind = path.node.kind;
+    if (kind === 'var') {
+      for (let declaration of path.node.declarations) {
+        switch (declaration.id.type) {
+          case "Identifier":
+            let left_side = types.memberExpression(types.identifier('global'), types.identifier(declaration.id.name));
+            let right_side = (declaration.init === null) ? types.nullLiteral() : declaration.init;
+            let varToGlobal = types.expressionStatement(
+              types.assignmentExpression('=', left_side, right_side));
+            newDeclarations.push(varToGlobal);
+        }
+      }
+      path.replaceWithMultiple(newDeclarations);
+    }
+  }
+}
+
+traverse(decipherAST, makeDeclarationsGlobalForEvalVisitor);
+decipher = generate(decipherAST, testing_opts).code;
+{% endhighlight %}
+
+#### What I've added here is the makeDeclarationsGlobalForEvalVisitor. It goes through every variable declaration in our new program checks to see if it is declared with the 'var' keyword (so we know to make it global), goes through every declaration in it (We could have multiple declarations like this: `var x = 3, y = 4, z = 5`) and it just replaces the var with "global." as I've said earlier.
+
+#### What's new here, is the use of the "@babel/types" package, this package is used to create new nodes from scratch! (When we created our new program we had to make an object with 2 properties "Program" and "body", "types" creates them for us! And also tells us what arguments to pass!)
+
+#### We create the left side value (global.IDENTIFIER_NAME), the right side (if there is any), create a node of type ExpressionStatement (it's not a variabledeclaration anymore!) and push it to the new nodes, next, we replace the old declarations with the ones pushed to our array!
+
+#### Let's get to our goal! Let's replace the CallExpressions! But before that, we gotta jump in [ASTExplorer](https://astexplorer.net/) and see how the CallExpression nodes we want to replace look
+
+![img12](/assets/img/ANTIBOTS-PART-V-IMG-12.png)
+
+#### So what we can see is that the CallExpression nodes we need are to be filtered as following:
+  - #### They need to have 2 arguments
+  - #### The first argument needs to be a StringLiteral (this represents the element's index in the array)
+  - #### The second argument needs to be a StringLiteral, as well (this represents the decoding key)
+    - #### If they are not both StringLiterals they reference other variables and can break our program, for now we can replace most calls like this
+  - #### The callee node is of type "Identifier"
+  - #### The first argument needs to start with "0x" (all are hex values)
+
+#### You can gather all this by using ctrl+f in your script and searching for all the calls to create a pattern
+#### The code looks something like this:
+
+{% highlight js %}
+const replaceCallExpressionRC4Visitor = {
+  CallExpression(path) {
+    if (path.node.arguments.length == 2 &&
+      types.isStringLiteral(path.node.arguments[0]) &&
+      types.isStringLiteral(path.node.arguments[1]) &&
+      types.isIdentifier(path.node.callee) &&
+      String(path.node.arguments[0].value).startsWith("0x")) {
+      let newNode = {
+        type: "StringLiteral",
+        value: eval(decipher + `;${generate(path.node).code}`)
+      };
+      path.replaceWith(newNode);
+    }
+  }
+}
+
+traverse(AST, replaceCallExpressionRC4Visitor);
+{% endhighlight %}
+
+
+#### Here, I've created the new node not using "types" just to show you that it works as well, though the use of the "@babel/types" package is recommended whenever you can use it!
+#### We also make use of path.replaceWith() method with lets us replace the current node with a new one!
+#### Oh, and one more thing, when evaluating, make sure that between any scripts (in our case the "decipher"ing script and the generated script from the CallExpression we are currently at (we gotta generate that and evaluate it, too, so we get returned the actual value) we have a ';'. Scripts might collide and not have an ending semi-colon so we gotta make sure it doesn't throw an error because of this)
+
+#### For la grande finale, let's run our code and see what our script looks like!
+
+![img13](/assets/img/ANTIBOTS-PART-V-IMG-13.png)
+
+#### Much, much better, there's only a few calls we'll deal with at the end of the tutorials! Till next time!
