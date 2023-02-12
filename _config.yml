@@ -19,7 +19,7 @@
 # in the templates via {{ site.myvariable }}.
 domain: "nerodesu017.github.io"
 url: "https://nerodesu017.github.io"
-baseurl: ""
+baseurl: "/"
 
 title: Nero's Blog
 email: nerodesu017@gmail.com
