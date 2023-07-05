@@ -1,18 +1,9 @@
 ---
 layout: page
-title: About
+title: WhoAmI?
 permalink: /about/
 ---
 
-This is the base Jekyll theme. You can find out more info about customizing your Jekyll theme, as well as basic Jekyll usage documentation at [jekyllrb.com](https://jekyllrb.com/)
+I'm Nero, a Software Engineer, here is my [Resume](/assets/Andrew_resume.pdf)
 
-You can find the source code for Minima at GitHub:
-[jekyll][jekyll-organization] /
-[minima](https://github.com/jekyll/minima)
-
-You can find the source code for Jekyll at GitHub:
-[jekyll][jekyll-organization] /
-[jekyll](https://github.com/jekyll/jekyll)
-
-
-[jekyll-organization]: https://github.com/jekyll
+I'm always open to exciting business opportunities, so hit me up either on discord or email me (you can found both in the Resume, just wanna deter some bots!)

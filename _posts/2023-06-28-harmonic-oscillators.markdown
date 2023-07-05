@@ -127,7 +127,7 @@ Thank you for asking, we're gonna make use of our javascript buddy to help us wi
 
 For prototyping we'll use [p5.js](https://editor.p5js.org/), as we can create animations and such.
 
-Now, before actually hopping in, let me tell you EXACTLY want I want to do. Animate a ball so that it traverses the graphed function.<br>
+Now, before actually hopping in, let me tell you EXACTLY what I want to do. Animate a ball so that it traverses the graphed function.<br>
 If you remember, our function is basically a unidimensional function, we got $x$ (the displacement) as a function depending on $t$, the time.
 
 Now graphing it out, that line is bi-dimensional, we got an x and y for every point of the line.
