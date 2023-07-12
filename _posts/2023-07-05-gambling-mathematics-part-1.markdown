@@ -1,0 +1,100 @@
+---
+layout: post
+title: Gambling Mathematics - Part I
+author: Nero
+date: 2023-07-05 17:00:00 +0300
+categories: [mathematics, programming, gambling]
+tags: [mathematics, programming, gambling]
+---
+
+## How did we get here?
+Last year I had the opportunity to lay my hands on a pretty nifty book: [Mark Bollman's Basic Gambling Mathematics book](https://amzn.to/3JJVfra).
+
+So while everyone was preparing for the Final High School Exam and preparing for University Admissions I was doing the exercises proposed by Mark in his book. (Partly true, I was grinding the exercises while in Maths Class, but still).
+
+Definitely had a blast and this book ended up being the reason I started LOVING probabilities.
+
+![img1](/assets/img/gambling-mathematics/part-1/1.png)
+
+## The History of Games of Chance
+Frankly speaking, if you've ever been to a Casino you know how it is: you get freebies (like drinks, food), it smells really good in there (high quality fragrances), you can't know if it's day or night since there's no windows, and many more ways they keep you in there. <br>All of these things create an experience. It's like going to a movie, but you end up losing waaaay more money. They really know how to keep you hooked, feel me?
+
+Let's talk about where it ALL began, cause gambling goes a looong way back. Some say that Ancient China (me included) started it all, others claim it was Ancient Egypt. It's whatever though, details don't matter that much, we gotta bring it back to basics, games is what really matters. Cause you can have the best setup, the dopest casino, but if your games suck, it's just like some well packaged sh\*t... It's still sh\*t.
+
+Dem ancient Chinese and Egyptians were all about board games, mostly, Liubo, Mehen, Senet, Hounds and Jackals. Dice games were a big deal, too, they had Astragaloi, Tali, Sic Bo, Barbotte, Passe-dix (a'ight this one is kinda new, not from ancient time but still). And let's not forget card games: Ma diao, Baccarat, Kanoffel, Piquet, Mamluk.
+
+Fast forward to today, and we're still using the same means (cards, dice) but for different games (not all of 'em, some games are still played, like Sic Bo, Baccarat). We got Blackjack, Poker as card games, Craps and Sic Bo for dice games and Yahtzee and Horse Racing for board games (that we play electronically cause that's where it's at).
+
+So today, since it's the first part of our series, we're gonna take a look at __Chuck-A-Luck__, a popular but simple game, mostly played at carnivals. But let's not lose our focus, we are here for the __Maths__.
+
+## Game No. 1: Chuck-A-Luck
+Chuck-A-Luck is a simple game: we got 3 dice and we roll them. Before we get to roll the dice, we get to place in our bets. We can bet on any number 1-6 and we get back our bet every time the number is found on a dice.<br>
+Let's say we pick out number 6 and we bet \\$10 on it. If a 6 is found on one dice, we get our \\$10 back. If 6 is found on 2 out of the 3 dice, we get back \\$20 (\\$10 our initial bet + \\$10 that is basically our profit). If 6 is found on all 3 dice we get back \\$30 (\\$10 initial bet + \\$20 for the 2 other dice that have our number). In the case that 6 is not found on any, we lose our bet. Sounds simple? Great. If not, you might be dumb.
+
+My process of thought when wanting to get into the mathematics behind a game is thinking of what I want from the game, what I'm interested in. And that's __EV__ as the math nerds call it.
+
+![img2](/assets/img/gambling-mathematics/part-1/2.png)
+
+__EV__ is short for Expected Value and it basically means the average value that we can expect from each bet we make. Simply put, if I bet \\$10 each turn, what's my expected outcome. Now, the actual EV for this game is -\$0.8. So, on average, every turn we lose 80 cents for every \\$10. That's a 8% loss.
+
+---
+
+Since we are discussing Expected Value, let's also discuss House Edge (HE) or House Advantage (HA). What HE esentially is, is -1 multiplied by EV. Since we are losing 8% on every bet, the house gains 8% on every bet. That's the House Edge.
+
+---
+
+Back to EV, how would we calculate EV in our case?<br>
+Well, first, we'd have to see from all the possible outcomes how many of those we win nothing, we win 1x our bet, 2x and 3x our bet.
+
+So how many possible outcomes do we have in total?<br>
+If you recall, we said we got 3 dice, each of them with 6 sides. For any of the 6 possible values for the first dice, we got 6 more for the second one, and for any of those we got 6 more for the last one, so that would mean $6 * 6 * 6 = 216$, 216 possible outcomes.
+
+From those 216, we win 3x our money only if we get our chosen number on all 3 dice, we'll say it's 5, so only for the $(5,5,5)$ combination, which is only $1/216$.
+
+From the 216 combinations, we win 2x our money only if we get our chosen number on 2 out of the 3 dice, which results in the $(5,5,x)$, $(5,x,5)$ and $(x,5,5)$ combinations (where $x$ is any number from 1 to 6 expect for number 5). For the first one $(5,5,x)$ we got 5 outcomes, for the 2nd one $(5,x,5)$ we got 5, as well, and for the last one $(x,5,5)$, 5, as well. In the end, only $15/216$.
+
+From the 216 combinations, we win our money back if we get 5 on either one of the dice: $(5,x,y)$, $(x,5,y)$, $(x,y,5)$, for each one of those we got $5 * 5 * 1 = 25$ outcomes. So that means $25 * 3 = 75$ => $75/216$.
+
+The remaining number of outcomes come to around $216 - 1 - 15 - 75 = 125$. Let's see if by doing the math would get us the same value: $(x,y,z)$, where $x$, $y$ and $z$ are all from the next set: $\\{1,2,3,4,6\\}$ => $5 * 5 * 5 = 125$.
+
+---
+
+A quick summary:
+
+3x our money: $1/216$<br>
+2x our money: $15/216$<br>
+1x our money: $75/216$<br>
+0x our money: $125/216$
+
+---
+
+Okay, so where do we go from here?<br>
+Well, as I mentioned before, we gotta stick to __EV__. Which the only thing remaining in our case is to multiply each chance of each outcome to appear by the amount we'd make (in case we make \\$0, we wouldn't say we made \\$0, but rather that we LOST \\$1).
+
+To make this easier, let's say we bet \\$1. For the 3x it means we win \\$3, for the 2x \\$2, for 1x \\$1 and for 0x we lose our money so basically -\\$1.<br>
+Plugging it all in the mathematical equation we get:
+
+### $(1/216) * \\$3 + (15/216) * \\$2 + (75/216) * \\$1 + (125/216) * -\\$1 =$<br>
+### $(1 * \\$3 + 15 * \\$2 + 75 * \\$1 - 125 * \\$1)/216 =$<br>
+### $-\\$17/216 = -\\$0.0787 \approx -\\$0.08 $
+
+The mathematical formula would look something like:<br>
+### $ \sum x P(x) $
+
+With $ x $ being the returned value in our case (\\$3, \\$2, \\$1, -\\$1) and $ P(x) $ being the probability of the outcome mapped to the returned value.
+
+---
+
+## End
+
+This was a simple example, Chuck-A-Luck, being the easiest games to analyze as the mathematics behind it are not complicated. I've decided to start with it to take you through the my process of thinking when I get to a game of chance. What am I looking for, and how I backtrack all of it.<br>
+We've discussed the basics of Permutations (and finding the number of possible outcomes), talking about the Expected Value (as well as the House Advantage/Edge) and finding out why players prefer games like Blackjack (where the HA can be as low as 0%) as opposed to Chuck-A-Luck (where the HA is 8% even with all the knowledge and experience in the world).
+
+In the next posts we will dive into harder-to-analyze games of chance (Card Games) and also easy-to-analyze games for explaining specific concepts that in my opinion are pretty awesome. I can't promise anything (cause I'm lazy, and some things I'm not sure many of you will enjoy sitting and munching through), but we might explain Set Theory, Kolmogorov's Axioms (which lay the foundation for probability theory, which are indeed really needed), Permutations, Arrangements and Combinations, calculating volatility using the Binomial Theorem (not for all games sadly) and lots of other stuff.
+
+And as always, as the main resource for this: [Mark Bollman's Basic Gambling Mathematics](https://amzn.to/3JJVfra)<br>
+Some other books that you might have a look at: 
+- [Catalin Barboianu's Mathematics of Slots](https://amzn.to/3XNlrXv)
+- [Catalin Barboianu's Probability Guide to Gambling](https://amzn.to/3NMZfZ5)
+
+Till next time!
