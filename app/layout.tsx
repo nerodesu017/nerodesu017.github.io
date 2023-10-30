@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 // import { Analytics } from "@/components/analytics";
 import { ModeToggle } from "@/components/mode-toggle";
+import Script from "next/script";
 // import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,6 +24,22 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        {process.env.NODE_ENV === "development" ? (
+          <></>
+        ) : (
+          <>
+            <Script src="https://www.googletagmanager.com/gtag/js?id=G-KDM1FLGF1R"></Script>
+            <Script id="google-analytics">
+{`
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'G-KDM1FLGF1R');
+`}
+            </Script>
+          </>
+        )}
       </head>
       <body
         className={`antialiased min-h-screen bg-white dark:bg-black text-black dark:text-slate-50 ${inter.className}`}
@@ -45,8 +62,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <hr className="mt-12 mb-12" />
             <footer>
               <div className="prose dark:prose-invert">
-                Hi, I&apos;m nero and this is my blog! It is mainly for coding and
-                reverse engineering.
+                Hi, I&apos;m nero and this is my blog! It is mainly for coding
+                and reverse engineering.
                 <br /> You like what you see and wanna support me? Hmu with a
                 business opportunity or just, spread the word, it helps a lot!
               </div>
