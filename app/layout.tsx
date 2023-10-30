@@ -1,0 +1,60 @@
+import Link from "next/link";
+import "./globals.css";
+import { Inter } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+// import { Analytics } from "@/components/analytics";
+import { ModeToggle } from "@/components/mode-toggle";
+// import Image from "next/image";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata = {
+  title: "Nero Deobfuscation Blog",
+  description:
+    "Hi, I'm nero! Join me in my adventure to tackle antibots (mainly), but also other stuff like the mathematics behind luck-based games, physics, and many more!",
+};
+
+interface RootLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+      </head>
+      <body
+        className={`antialiased min-h-screen bg-white dark:bg-black text-black dark:text-slate-50 ${inter.className}`}
+      >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <div className="max-w-2xl mx-auto py-10 px-4">
+            <header>
+              <div className="flex items-center justify-between">
+                <ModeToggle />
+                <nav className="ml-auto text-sm font-medium space-x-6">
+                  <Link href="/">Home</Link>
+                  <Link href="/about">About</Link>
+                  <Link href="https://github.com/nerodesu017">Github</Link>
+                </nav>
+              </div>
+            </header>
+            <main>{children}</main>
+
+            {/* <div className="w-full h-0.5 my-8 bg-black dark:bg-white"></div> */}
+            <hr className="mt-12 mb-12" />
+            <footer>
+              <div className="prose dark:prose-invert">
+                Hi, I&apos;m nero and this is my blog! It is mainly for coding and
+                reverse engineering.
+                <br /> You like what you see and wanna support me? Hmu with a
+                business opportunity or just, spread the word, it helps a lot!
+              </div>
+            </footer>
+          </div>
+          {/* <Analytics /> */}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

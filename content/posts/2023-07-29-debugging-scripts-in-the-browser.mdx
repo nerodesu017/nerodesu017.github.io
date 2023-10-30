@@ -1,0 +1,181 @@
+---
+layout: post
+title: Debugging Scripts in the Browser
+author: Nero
+date: 2023-07-28 20:00:00 +0300
+categories: [antibots, programming]
+tags: [antibot, antibots, programming, puppeteer, automation]
+---
+
+## Foreword
+Hi there, nero here! Today I wanted to show you how I've been debugging scripts lately.<br/>
+Also, wanted to show some appreciation to [Jarrod](https://www.linkedin.com/in/jsoverson/) for writing an amazing blog post [Intercepting and Modifying Responses with Chrome via the Devtools Protocol](https://www.f5.com/company/blog/intercepting-and-modifying-responses-with-chrome-via-the-devtools-protocol). Most of the final solution that I will present today is based on his article, so make sure to check it out!
+
+If you don't want to read the story of how I got to the solution, go to Jarrod's article above or just scroll down for the code block which shows you a better way (at least for me, a guy that heavily modifies scripts and doesn't wanna close and spawn a browser)
+
+## Context
+It's really awesome to be able to play with scripts, modify them here and there and then test them in the browser... Until you kinda realize that it is not that easy, or at least that's how I felt when starting out. So, like anybody else, I've seen people in discord talking about [Charles Proxy](https://www.charlesproxy.com/) and [Fiddler Everywhere](https://www.telerik.com/fiddler/fiddler-everywhere), 2 amazing apps (or at least that's what I get to say about the free/trial versions) that helped me out quite a bit, all whilst having a really decent UI.<br/>
+Sadly, if you know me, I am skeptical about good looking UI, so I wanted to go for Charles rather than Fiddler Everywhere, but then again, I'm also skeptical about JAVA (I ain't gonna lie, if I were to land a job that was paying well and I had to code in Java, I wouldn't complain, Kotlin's also an option), in the end I discovered [Fiddler 4](https://www.telerik.com/fiddler/fiddler-classic). Bingo!
+
+Now, for those that don't know, Fiddler 4 looks like it was made in 2007 (it was made back then, that's the pun $-$ it's just a joke). The cool thing about it, is SCRIPTING... but with C#. Now, I'm not fan of purely OOP languages (like C# and Java, but then again JS is inspired by Java so I should just shut my mouth), but scripting in it is pretty powerful, and awesome.
+
+Now, to help you visualize it all, here's a screenshot of what FiddlerScript looks like:
+
+![img1](/assets/img/debugging-scripts-in-the-browser/1.png)
+
+What you can do is literally insert your code inside these so called handlers (which, to me, look like hooks) and it gets executed. For example, the `OnBeforeResponse` hook. You can literally load your script, do some magic to change it with your custom one, and boom, you go to the wanted site in your browser and when you open the Chrome Dev Tools you'll see it's the modified one. Won't give you the code as it's C# and we don't do Fiddler in this tutorial, but just letting you know you can and it ain't that hard, I'll show you a better solution, just wait until the end (or jump there directly).
+
+Won't even talk about how much it took me to figure out how to make the Fiddler Cert trusted and how my eyes were literally burning at night cause of the white theme.
+
+### Aight, cool, so, whachu done next?
+
+Well, afterwards, I was like: _Hmm, interesting, but I have multiple scripts that are... changing... What can I do about them? I would also like to call my DEOBFUSCATION script(it's an AST manipulation script, but it sounds cooler that way) on the run, directly from Fiddler. How CAN I DO THAT?_
+
+I tried a lot of stuff, and by tried I was just too annoyed with C# syntax and hated the way spawning processes worked through FiddlerScript so I started looking for alternatives.
+
+I stumbled across FiddlerCore, thought it was, until I found out it's a .NET dependency and use the Babel suite in JS, which in no way I'm going to interconnect that (only for a SMALL LOAN OF A MILLION DOLLARS).
+
+![gif1](/assets/img/debugging-scripts-in-the-browser/gif1.gif)
+
+So that's off the table, what do we have, Chief? Well, honestly, at this point I thought I was lost, I stumbled across [HTTPTOOLKIT](https://httptoolkit.com/), yet another cool and awesome tool, just like the ones above. I tested it, and sadly, even though it is made in JS, I couldn't for the sake of me find a way to import and call JS functions, so this is a dead-end.
+
+
+I honestly thought it couldn't be possible, could it? Like, there's REALLY no tool that can let me edit files on the fly, without dealing with all cross-language stuff and spawning child processes and what not?
+
+## The solution
+
+When all was lost, I remembered I helped a friend a few years ago (it was 2, 2 years) with something Puppeteer related, and what I remember from him was something along the lines of `chrome remote debug port` and how he'd use it to test a script after multiple rounds of AST transformations. And I thought Evrika! (and it was Evrika, kindof, I was going to find out later that it was pretty good). Now, I don't say how much time I spent bruteforcing google and how many captchas I ended up actually solving to find the F5's article, but let's say it was a decent amount. I tried `chrome remote debug port mocking`, `chrome remote debug intercept`, `chrome remote mocking port`, `chrome debug mocking`, and a duck ton of other stuff, and finally I found that using `chrome intercept response` was all that was needed, that search alone and the 4th link (for me) on the page was the JACKPOT.
+
+I won't go over [Jarrod's whole article](https://www.f5.com/company/blog/intercepting-and-modifying-responses-with-chrome-via-the-devtools-protocol), but it is here if you wanna check it out.
+
+And here's the code:
+
+## launchBrowser.ts
+```ts
+// this is mostly ~~stolen~~ borrowed from Jarrod
+import * as chromeLauncher from "chrome-launcher";
+import * as fs from "fs";
+
+(async _ => {
+  const chrome = await chromeLauncher.launch({
+    chromeFlags: [
+      "--window-size=1200,800",
+      "--auto-open-devtools-for-tabs",
+      "--user-data-dir=/tmp/chrome-testing"
+    ]
+  });
+
+  // this is where we switch it up
+  // we will save the debug port in a file
+  // that is because it is dynamic and after each modification to the intercepter
+  // we don't want to spawn the chrome instance again, we just want to attach to it
+  fs.writeFileSync("./port.txt", chrome.port.toString());
+})();
+```
+
+## intercepter.ts
+```ts
+// still most of it borrowed from Jarrod
+import * as CDP from "chrome-remote-interface";
+import * as fs from "fs";
+
+// the 'patcher.ts' is the file that contains the AST manipulation function
+import patch from "./patcher";
+
+(async _ => {
+  // here we read the port from the file so we can attach to it
+  const chrome = {
+    port: parseInt(fs.readFileSync("port.txt").toString())
+  }
+
+  // we attach to the chrome instance
+  const protocol = await CDP({ port: chrome.port });
+  console.info("Connected to Chrome");
+
+  // next, we set up the interception only for specific urls
+  const { Network } = protocol;
+  Network.enable();
+  Network.setRequestInterception({
+    patterns: [
+      {
+        interceptionStage: "HeadersReceived",
+        resourceType: "Script",
+        urlPattern: "https://wanted-domain.com/*"
+      },
+    ]
+  });
+  console.info("Set up request interception");
+
+  // we create the handler for when the request gets intercepted
+  Network.requestIntercepted(async (params) => {
+    const { interceptionId, responseHeaders } = params;
+    const newHeaders = [];
+    
+    // we wait until we get a response for the request, cause that's what we are modifying
+    const body = await Network.getResponseBodyForInterception({ interceptionId });
+
+    const deobbedBody = body.base64Encoded ? atob(body.body) : body.body;
+
+    // now we make sure the body contains what we want
+    // we make sure we are modifying the right script
+    // if not, we just leave the handler and let the browser get the default script
+    if (!deobbedBody.contains("KPSDK_")) {
+      Network.continueInterceptedRequest({interceptionId});
+      return;
+    };
+
+    // here, with the 'patch' imported function
+    // we provide it the body and have it modified as needed
+    const newBody = patch(deobbedBody);
+
+    // lastly, let's not forget to modify the content-length
+    // if we don't (slim chances it's the same length after modifications)
+    // some nasty things are going to happen
+    Object.keys(responseHeaders).map(key => {
+      newHeaders.push(key.includes("Content-Length") ? `Content-Length: ${newBody.length}` : `${key}: ${responseHeaders[key]}`);
+    })
+
+    // After everything is done, just replace the body with the new one
+    // the headers with the new one
+    // and let it flow
+    Network.continueInterceptedRequest({
+      interceptionId,
+      rawResponse: btoa(
+        "HTTP/1.1 200 OK\r\n" +
+        newHeaders.join("\r\n") +
+        "\r\n\r\n" +
+        newBody
+      )
+    })
+  })
+})();
+```
+
+## patcher.ts
+```ts
+// here honestly you can use whatever
+// it's your patcher after all
+import { parse } from "@babel/parser";
+import generate from "@babel/generator";
+
+export default function runner(input = ""){
+  try {
+    const AST = parse(input);
+
+    // ... here you modify the AST
+
+    return generate(AST).code;
+  } catch(err){
+    return input;
+  }
+}
+```
+
+All that you have to do right now, is just modify the `patcher.ts` file, and reload the `intercepter.ts` file, which should be BLAZINGLY FAST
+
+## Summary
+So, what did we learn?
+1. Doing something is better than not doing anything. Using Fiddler 4 to spawn child processes to modify scripts on the fly? A good solution? Nah, definitely not, not the prettiest of 'em all, not even close. But, honestly, better than just crying about it and not getting anywhere.
+1. Never give up and get to searching the web and asking ChatGPT. But to be honest with you, usually blog posts have helped me with some edge cases/specific problems that I've run into. The choice is yours.
+
+See you next time!

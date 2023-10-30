@@ -1,0 +1,44 @@
+---
+layout: post
+title:  ANTIBOTS - PART I - A short introduction to the Sneaker Development Industry and Antibots
+author: Nero
+date:   2021-05-06 03:45:10 +0300
+categories: [antibots, programming]
+tags: [antibot, antibots, programming, ast, manipulation]
+---
+
+Let’s imagine for a second you want to bot a website. Though, why would you wanna do this? Well, nowadays, there are quite a few products that are produced in low quantity and the demand is pretty high. For example, GPUs or even sneakers.
+
+You spend a few weeks/months researching and you tell yourself you're gonna start a bot of your own, as a personal bot or even to give it out to people as well. All goes well, you learn http, about requests, learn how to use Chrome Dev Tools and everything looks perfect! There’s a catch though, these websites, well, they are sought by a lot of people, it’s about who gets there first and checkouts, so you gotta be quick.
+
+At first, you thought a browser bot would be enough, because you would have to just mimic the user’s actions.. That's when antibots come in, they detect those browsers.. So you dig a little on the internet and you find that there are packages that make your browser undetected, success!!!
+
+The development goes all well, and then you find yourself still not being able to checkout, cause there’s not only you that thought to bot this way, so what would be faster?
+
+Going request mode, of course! But when you go request mode, there’s no way of actually going about the antibot.
+
+These antibots are especially made to be run in a browser.
+
+First, we have to understand what these antibots are and, at a basic level, how they work.
+
+There’s quite a few different ways antibots can detect that you are indeed sending illegitimate requests to the webserver, from what I’ve seen a few of the methods are:
+
+1. Detecting and blocking the IP you are sending requests from - when you want to bot a website, you usually want to get as much quantity of a product as you can (there are people who have the funds for even 100 GPU’s). This comes with a bit of headache at first, wouldn’t you get blocked by the website if you sent 100 requests from your PC at the same time? But, bingo! There’s a solution, proxies! You can first reroute your traffic through another machine so that the website thinks you are sending your requests from another location! These antibots that I’m talking about (for the moment DataDome) gather data of datacenters and botnets that exist and block their ip’s, these seem to be the ones we can’t really tackle with AST manipulation as the decisive factor if the user cooks or not it’s the user himself or the botnet/datacenter proxies the user uses!
+
+2. Making use of what the browser has to offer to either gather data and send it to an endpoint for a valid cookie, or just generating the cookie on the client itself! What the browser has to offer is related to its ability to manipulate the DOM and to use the specific browser variables (window, document, navigator)
+
+We are going to focus the most on the 2nd type of antibots.
+
+Let’s expand a little more. How do these antibots work exactly? Well, they check for specific browser characteristics to be in place (for example, the window.navigator object to exist and be populated accordingly) and even use the browser methods to manipulate the DOM to make sure that the antibot is not being sandboxed.
+
+What do I mean by sandboxing? Well, let’s look at chrome. These antibots are written in javascript, which basically powers web and clientside. Sandboxing, means to try and execute the script, but not in the browser specifically. The browser has to render elements on the screen, has to load plugins, it has to do a lot of things that eat up resources. Up until a decade ago (2009) javascript was only running in the browser, until someone came up with an idea to make use of the V8 engine to make it run javascript outside the browser! And that’s when NodeJS was created. NodeJS uses only the V8 engine and doesn’t have the browser variables (window, document, navigator) but instead has some other variables and it can be detected pretty easily, so that’s why we have to be careful.
+
+So what chance do we have at this?
+
+By now, you’d think our chances are pretty slim, but not really! There’s ways, one of them would be to make Browser Bots even more hidden by playing with the variables they modify and trying to simulate user actions better.
+
+Though, what we’ll focus on is trying to deobfuscate these antibots, see how they work and make working gens for them.
+
+What do I mean by deobfuscation? Well, software is still property, intellectual property. In the beginning of the information era obfuscation was used to make sure competitors and other people couldn’t just steal the software they buy, repack it and resell it (there are also laws, but obfuscation is also to make it harder to even replicate, because it does some transformations that don’t affect the computer since the computer executes instructions that lead to the same result, but it’s certainly harder for a human being to understand the underlying way the program executes).
+
+In our era, obfuscation is heavily used for antibots, so users can’t just look at the antibots code, see what it checks for directly and create a solution that would bypass it.

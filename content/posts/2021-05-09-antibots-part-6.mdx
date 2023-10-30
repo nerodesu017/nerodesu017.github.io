@@ -1,0 +1,173 @@
+---
+layout: post
+title:  ANTIBOTS - PART VI - Giving our script a few little tweaks
+author: Nero
+date:   2021-05-09 20:17:00 +0300
+categories: [antibots, programming]
+tags: [antibot, antibots, programming, ast, manipulation]
+---
+
+Our script got to be pretty beautiful, we might say. But, let's look at some snippets of code and compare them.
+On line 230 we can see this instruction
+
+```js
+var fly = new maggot["Date"]()["getTime"]();
+```
+
+Those of you accustomed with JS know that this could just as well look like this:
+
+```js
+var fly = new maggot.Date().getTime();
+```
+
+We gotta agree the 2nd snippet looks a lot more clean. The square brackets are used to show that a property is computed. Having a . and then the Identifier shows that a property is not computed.
+Now, what do I mean by computed? Let me show you:
+
+```js
+let our_object = {
+    "our_property": function(){
+        console.log("Hello");
+    }
+}
+let our_identifier = "our_property";
+```
+
+We've declared 2 variables, "our_object" containing 1 property, "our_property", and a variable, "our_identifier" holding the property's name.
+The property (method) can be accessed both by using the square bracket (computed) notation, or the dot notation (non-computed)
+
+```js
+our_object["our_property"](); // this prints "Hello" in the console
+our_object[our_identifier](); // this prints "Hello" in the console, as well
+our_object.our_property(); // this prints "Hello" in the console, as well
+our_object.our_identifier(); // this throws an error
+our_object."our_property"(); // this throws an error, as well
+```
+
+As we can see, using the dot notation we can only use Identifiers, using the square bracket notation, we can use them both
+We can also see that using the dot notation we can use an Identifier with the name that a StringLiteral would've had as a value if used with the square bracket notation
+It's kinda tangled, I'm gonna write it down for you to know exactly what I'm talking about
+
+```js
+our_object["our_property"]();
+// This can be written as
+our_object.our_property();
+```
+
+The difference is, the 2nd option looks better visually cause it's not loaded with quotes and square brackets.
+Our script is just the same, let's plug our script in [ASTExplorer](https://astexplorer.net/) and see for ourselves!
+
+![img1](/assets/img/antibots/part-VI/1.png)
+
+As we can see on the right side, just as I've told you, the MemberExpression is computed
+Let's write a new line of code with the edited version we'd want and see the differences
+
+![img2](/assets/img/antibots/part-VI/2.png)
+
+As we can see here, 2 things have changed. The "computed" property of the "MemberExpression" node is "false" instead of "true", and the "property" node is of type "Identifier" instead of "StringLiteral".
+How would we implement this? Let's think about it:
+
+- First, we need to make our visitor only stop at MemberExpressions
+- Next, we need to check if either the "property" node is of type "StringLiteral". Now, why don't we check for the computed variable to be true? Well, as I've shown you before, Identifiers can be used with the square bracket notation as well, Identifiers reference a value somewhere in memory, so we might end up breaking the script if we don't also evaluate the script at that point and find the actual value it's replaced with. But, the script has checks to see if we are running it in a browser, so we gotta be aware of that, too. For the moment, it's too many variables and it's not worth it.
+- After that, we need to create a new node of type "Identifier" with the name the same as the value of the previous "StringLiteral" node.
+- Lastly, we need to set the "computed" property to false, and replace the "property" node with the new node we've created.
+
+In code, this will look like this:
+
+```js
+const objectSqBracketsToDotNotationVisitor = {
+  MemberExpression(path) {
+    if (types.isStringLiteral(path.node.property)) {
+      let property_name = path.node.property.value;
+      let newNode = types.identifier(property_name);
+      path.node.computed = false;
+      path.node.property = newNode;
+    }
+  }
+}
+
+traverse(AST, objectSqBracketsToDotNotationVisitor);
+```
+
+Running the script we get:
+
+![img3](/assets/img/antibots/part-VI/3.png)
+
+Ah, much better!
+Now, for our final 2 visitors for this part, let's talk about the condition for the while loop, the ugly `!![]`, what even is this?
+Well, this has to do with JS. In JS `[]` declares an empty array. Next, the unary operator ! negates the array, this results into JS giving you the value 'false' for `![]`, after that, this value gets negated again and we get 'true' for `!![]`
+Let's check it out with our [ASTExplorer](https://astexplorer.net/) buddy to see how we can make a visitor for this.
+
+![img4](/assets/img/antibots/part-VI/4.png)
+
+Let's create a fast visitor that stops at UnaryExpressions and log them if the operator is '!'
+
+```js
+const unaryExpressionsVisitor = {
+  UnaryExpression(path){
+    if(path.node.operator === '!'){
+      console.log(generate(path.node).code);
+    }
+  }
+}
+
+traverse(AST, unaryExpressionsVisitor);
+```
+
+Remember to log the generated script from that UnaryExpression node, otherwise it will log as an object.
+
+![img5](/assets/img/antibots/part-VI/5.png)
+
+As we can see we have UnaryExpressions that don't reference any variables but some that do. We can also see that there are also UnaryExpressions that return false `![]` in our code, could those be the ones that are wrapped inside a bigger one that returns true? If we traverse the node `!![]` it will print 2 times, one time for the big node `!![]` and the 2nd time for the node inside it `![]`
+Let's remove the nodes as we go through them so we don't print inside nodes
+
+```js
+const unaryExpressionsVisitor = {
+  UnaryExpression(path){
+    if(path.node.operator === '!'){
+      console.log(generate(path.node).code);
+      path.replaceWith(types.unaryExpression('~', types.arrayExpression()));
+    }
+  }
+}
+
+traverse(AST, unaryExpressionsVisitor);
+```
+
+For now, we'll replace the UnaryExpression node with another UnaryExpression but that has a different operator and as the argument we'll provide an empty ArrayExpression. This we'll make our script not work properly, but we're only testing at the moment, we'll edit it later. Let's run the script and see what we get in our console.
+
+![img6](/assets/img/antibots/part-VI/6.png)
+
+Ah, we can still see that the only UnaryExpressions that we can modify (the ones that don't reference anything) are the `![]` and `!![]` expressions, so let's do just that!
+
+```js
+const unaryExpressionsVisitor = {
+  UnaryExpression(path){
+    if(path.node.operator === '!'){
+      switch(path.node.argument.type){
+        case 'UnaryExpression':
+          if(path.node.argument.argument.type === "ArrayExpression" &&
+              path.node.argument.argument.elements.length === 0){
+                path.replaceWith(types.booleanLiteral(true));
+              }
+          break;
+        case 'ArrayExpression':
+          if(path.node.argument.elements.length === 0){
+            path.replaceWith(types.booleanLiteral(false));
+          }
+          break;
+      }
+    }
+  }
+}
+
+traverse(AST, unaryExpressionsVisitor);
+```
+
+First, we stop when we find an UnaryExpression. Next, we got a filter to make sure it has the operator we want to play with. Next, we use a switch case since there are 2 possible options our wanted nodes will have as arguments, either another UnaryExpression (`!![]`) or an ArrayExpression (`![]`). If it's another UnaryExpression, we gotta make sure its argument is an ArrayExpression with 0 elements, and then we just replace it with a BooleanLiteral that has a true value. If it is an ArrayExpression and not an UnaryExpression, we make sure it has no elements and we replace it with a BooleanLiteral that has a false value.
+If you wanna check all the nodes that can be created, check the types on the official babel website.
+Besides that, experiment with [ASTExplorer](https://astexplorer.net/) anytime you need to!
+Running our script gives us:
+
+![img7](/assets/img/antibots/part-VI/7.png)
+
+Till next time!

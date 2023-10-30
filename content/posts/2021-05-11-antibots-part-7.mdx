@@ -1,0 +1,145 @@
+---
+layout: post
+title:  ANTIBOTS - PART VII - Control flow flattening
+author: Nero
+date:   2021-05-11 20:17:00 +0300
+categories: [antibots, programming]
+tags: [antibot, antibots, programming, ast, manipulation]
+---
+
+We've been through quite a ride till now, but it only gets better. Today we'll talk about control flow flattening. Now don't think it will be really crazy, but it will be pretty interesting. The good thing is, [obfuscator.io](https://obfuscator.io/) uses a basic control flow flattening technique.
+Now, what is control flow flattening? The guys at [jscrambler](https://blog.jscrambler.com/jscrambler-101-control-flow-flattening/) explained it best. I'll only have a few references here (since I'm bad at drawing and they already got pictures, that's how you can easily understand)
+
+![img1](/assets/img/antibots/part-VII/1.png)
+
+Control Flow Flattening is.. Just that.. Flattening the flow of a program, it is usually done with a switch statement and it makes you jump from case to case, which, these cases, are not in an ordered way.
+It might be hard to grasp, in part cause you've probably never dealt with them, but mostly cause I have no idea how to explain them. So, since words don't make it advantageous for me, let me show you how they look inside our script:
+
+```js
+var dewberries = "3|2|5|6|1|7|8|4|0".split("|"),
+                dragon_fruit = 0;
+
+            while (true) {
+              switch (dewberries[dragon_fruit++]) {
+                case "0":
+                  ...
+                  continue;
+
+                case "1":
+                  ...
+                  continue;
+
+                case "2":
+                  ...
+                  continue;
+
+                case "3":
+                  ...
+                  continue;
+
+                case "4":
+                  ...
+                  continue;
+
+                case "5":
+                  ...
+                  continue;
+
+                case "6":
+                  ...
+                  continue;
+
+                case "7":
+                  ...
+                  continue;
+
+                case "8":
+                  ...
+                  continue;
+              }
+
+              break;
+            }
+```
+
+Basically how the switch is implemented is:
+- We have a variable declaration ("dewberries") which will hold the cases' index in the specified order
+- A second variable that cycles through the array ("dragon_fruit")
+- The actual switch case
+How shall we go about it? Well let's think for a second:
+- Firstly, we need to correctly identify the switch cases that are part of the control flow flattening. If we manually search for "switch(" in our file we get a few occurences and the ones we are most interested in are those who look like this: switch(arr1[index_counter++]), a SwitchStatement that has as discriminant a MemberExpression which has, in turn, as object an Identifier and as property an UpdateExpression.
+- Secondly, we have to go through cases in the order they are in our array and get the nodes from inside them.
+- Lastly, we replace the whole switch statement, the while loop it is wrapped in and the 2 variables before it (array and index_counter) with the nodes we collected in order.
+
+```js
+const controlFlowDeflatteningVisitor = {
+  SwitchStatement(path){
+    // First, we check to make sure we are at a good SwitchStatement node
+    if(types.isMemberExpression(path.node.discriminant) &&
+        types.isIdentifier(path.node.discriminant.object) &&
+        types.isUpdateExpression(path.node.discriminant.property) &&
+        path.node.discriminant.property.operator === "++" &&
+        path.node.discriminant.property.prefix === false){
+          // After we've made sure we got to the right node, we'll
+          // make a variable that will hold the cases in their order of execution
+          // and gather them in it
+          let nodesInsideCasesInOrder = [];
+          // we gotta get to the parent of the parent
+          // our SwitchStatement is wrapped inside a BlockStatement
+          // which that BlockStatement is the child of a WhileStatement
+          // which is in turn a child of another BlockStatement
+          // so if we go 3 levels up, we can get the previous 2 nodes 
+          // (the array containing indexes, and index counter)
+          let mainBlockStatement = path.parentPath.parentPath.parentPath;
+          // after we got 3 levels up, we gotta know the index of our
+          // WhileStatement child in the body of the big BlockStatement
+          let whileStatementKey = path.parentPath.parentPath.key;
+          // after that, we can get the array with the cases in their execution order
+          // both are in the save VariableDeclaration node so we substract 1
+          // and get the first VariableDeclarator child
+          let arrayDeclaration = mainBlockStatement.node.body[whileStatementKey - 1].declarations[0];
+          let casesOrderArray = eval(generate(arrayDeclaration.init).code);
+          // next, we remember the order of the cases inside the switch
+          // we'll use a map like this: caseValue -> caseIndex
+          let casesInTheirOrderInSwitch = new Map();
+          for(let i = 0; i < path.node.cases.length; i++){
+            casesInTheirOrderInSwitch.set(path.node.cases[i].test.value, i);
+          }
+          // After we've got the cases test values and the cases' keys, we're ready to go!
+          for(let i = 0; i < casesOrderArray.length; i++){
+            let currentCase = path.node.cases[casesInTheirOrderInSwitch.get(casesOrderArray[i])];
+            for(let j = 0; j < currentCase.consequent.length; j++){
+              // Don't forget to make sure you don't take a hold of
+              // the continue statements
+              if(!types.isContinueStatement(currentCase.consequent[j]))
+              nodesInsideCasesInOrder.push(currentCase.consequent[j]);
+            }
+          }
+          // after we got the nodes, we first delete delete the VariableDeclaration before our WhileStatement
+          mainBlockStatement.get('body')[whileStatementKey - 1].remove();
+          // then we replace the WhileStatement (which has only our SwitchStatement)
+          // with our nodes we've extracted
+          path.parentPath.parentPath.replaceWithMultiple(nodesInsideCasesInOrder);
+        }
+  }
+}
+
+traverse(AST, controlFlowDeflatteningVisitor);
+traverse(AST, controlFlowDeflatteningVisitor);
+```
+
+What I've done here, is not that hard to grasp. When you retry to make your own solution, remember to use [ASTExplorer](https://astexplorer.net/)
+There's still 2 things I want to discuss:
+
+- Why did I use traverse twice? Well, as you will see if you research the script for yourself, there's usually a SwitchStatement inside another SwitchStatement, and since we are not transforming AST recursively on the nodes we edit, we need to do it twice (For the sake of this tutorial we won't do it recursively, it's efficacy here, not efficiency at the moment)
+- What is up with the `mainBlockStatement.get('body')`? I wanted to remove the VariableDeclaration node before the WhileStatement. To delete nodes you need to use their path in the AST, not get into the node itself. When using the path, to go through the children of a BlockStatement for example (since the BlockStatement node has a body property), we can use the `.get()` method and pass it a query string as we've done 'body' in our case. In other cases (though I haven't tested it, yet), you might be able to use other query strings, like 'determinant', 'consequent', and what not!
+Let's execute our code!
+This is what it looked before:
+
+![img2](/assets/img/antibots/part-VII/2.png)
+
+This is what it looks like, after:
+
+![img3](/assets/img/antibots/part-VII/3.png)
+
+Till next time!
