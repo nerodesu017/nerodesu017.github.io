@@ -3,6 +3,7 @@ import rehypePrism from "@mapbox/rehype-prism"
 import {visit} from "unist-util-visit";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import remarkGfm from "remark-gfm";
 // import { inspect } from "util";
 
 /** @type {import('contentlayer/source-files').ComputedFields} */
@@ -99,6 +100,7 @@ export default makeSource({
       }
     ],
     remarkPlugins: [
+      remarkGfm,
       remarkMath,
       () => {
         return (tree, file) => {
