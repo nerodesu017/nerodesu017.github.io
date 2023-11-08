@@ -64,8 +64,8 @@ gtag('config', 'G-KDM1FLGF1R');
               <div className="prose dark:prose-invert">
                 Hi, I&apos;m nero and this is my blog! It is mainly for coding
                 and reverse engineering.
-                <br /> You like what you see and wanna support me? Hmu with a
-                business opportunity or just, spread the word, it helps a lot!
+                <br />You like what you see and wanna support me? Ask me about my crypto addresses, hmu with a
+                business opportunity or just, spread the word, it helps a lot! You can find ways to contact me in my <Link href={"/public/Andrew_resume.pdf"}>Resume</Link>
               </div>
             </footer>
           </div>

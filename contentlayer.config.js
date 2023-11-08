@@ -95,6 +95,8 @@ export default makeSource({
             if(!node.hasOwnProperty("properties"))return;
             if(!node.properties.hasOwnProperty("className"))return;
             if(!node.properties.className.some(cls => cls.startsWith("language-")))return;
+            node.properties.className = (node.properties.className || []).concat("line-numbers");
+            
           })
         }
       }

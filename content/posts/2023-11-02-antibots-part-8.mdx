@@ -1,0 +1,305 @@
+---
+layout: post
+title: ANTIBOTS - PART VIII - Geetest - CFF
+author: Nero
+date: 2023-11-02 16:00:00 +0300
+categories: [antibots, programming]
+tags: [geetest, antibot, antibots, programming, ast, manipulation]
+---
+
+<Math />
+
+# Disclaimer
+
+1. All content and information in this article is for informational and educational purposes only. 
+1. I own no rights over the Geetest script and if requested, the hosted script in this repo will be taken down.
+1. All the node types and properties (when talking about the AST) can be easily understood if you are copying the block codes and input them into [ASTExplorer](https://astexplorer.net/), but make sure you are using `@babel/parser` as the parser, hiding empty keys and hiding location data for an easier time.
+1. This obfuscation transformation/method/technique relies on Graphs which are specific to Discrete Math. If you something seems to not click for you throughout this article make sure you visit [Graph Theory](https://ggc-discrete-math.github.io/graph_theory.html) and [Notation for Graphs](https://www-student.cse.buffalo.edu/~atri/cse331/support/notation/graphs.html). If after visiting these, things still don't click and you reckon I have left something incomplete, please reach out to me ([Contact Page](https://nerodesu017.github.io/about) - and choose one of the ways presented in my Resume).
+
+# Introduction
+
+Today we are taking a look at what Control Flow Flattening really means. We will go through different examples (from easy to hard), explain my process of thought, maybe even talk about some edge-cases, and finally we will work on a real example: A part of a Geetest script related to its captcha. The Geetest script can be found at [gcaptcha4.js](https://static.geetest.com/v4/static/v1.7.5-e975ac/js/gcaptcha4.js) - while also being available on [this blog's repo](/assets/scripts/gcaptcha4.js)<br/>
+Also, this article is somewhat of a rewrite of my last article on antibots, part VII, where I was taking a look at incapsula. Check that out, as well, if you want. (though, not needed)
+
+# What is CFF (Control Flow Flattening)
+
+As the name suggests, CFF aims to flatten the flow of a program. It is an obfuscation technique used in many obfuscators nowadays, be it in interpreted languages (such as javascript) but also in compiled ones (C/C++ - for more info visit [obfuscator.re](https://obfuscator.re/omvll)). We take the time to mention [obfuscator.io](https://obfuscator.io/) and [jscrambler](https://jscrambler.com/) as the 2 main javascript obfuscators that are known to me and use this technique. The former can be tested for free, while for the latter I am not sure how permissive is the trial.<br/>
+
+### Mini example:
+In the next 2 code blocks we have a function that does the same thing: takes a number, console logs every number from 1 to our given number and then returns the sum of all the numbers it went through. It looks something like this:
+
+```js
+function countToAndReturnSum(num) {
+  let sum = 0;
+  for (let i = 1; i <= 30; i++) {
+    console.log(i);
+    sum += i;
+  }
+  return sum;
+}
+
+countToAndReturnSum(30);
+```
+
+A Control-Flow Flattened program would look something like this:
+
+```js
+function countToAndReturnSum(num) {
+  let jmp_var = 2;
+  while (jmp_var != 42) {
+    switch (jmp_var) {
+      case 7:
+        console.log(i);
+        sum += i;
+        i++;
+        jmp_var = 4;
+        break;
+      case 2:
+        var sum = 0;
+        var i = 1;
+        jmp_var = 4;
+        break;
+      case 9:
+        return sum;
+        break;
+      case 4:
+        jmp_var = i <= num ? 7 : 9;
+        break;
+    }
+  }
+}
+
+countToAndReturnSum(30);
+```
+
+As you can see our beautiful and well-understood function has had its flow modified. If we were to graphically show it, back when it was clean, it would look like this:
+
+![1](/assets/img/antibots/part-VIII/1.png)
+
+Now, the obfuscated version looks more like this:
+
+![2](/assets/img/antibots/part-VIII/2.png)
+
+Mathematical notation:
+  - $$ G = Directed\ Graph $$
+  - $$ G = (V, E) $$
+  - $$ V = \{2, 4, 7, 9\} $$
+  - $$ E = \{\{2, 4\}, \{4, 7\}, \{4, 9\}, \{7, 4\}\} $$
+
+
+The first version is pretty straight forward and if you have a bit of programming experience you should be able to read it without any problems. The second one is a tad more complicated. The steps of the program have been broken down in pieces (the switch statement's cases) and then placed in a random order (at least in the code, in the diagram they are in order LTR). This is not the easiest example, nor the hardest, but it exists to give you an idea if you are not that familiar with CFF.
+
+We'll get back to this example a bit later, for now let's see some easier ones and explain my process of thought.
+
+# Examples
+
+## 1. Easy
+
+From
+
+```js
+function add(a + b){
+    let sum = a + b;
+    return sum;
+}
+```
+
+To
+
+```js
+function add() {
+  let jmp_var = 2;
+  for (; jmp_var !== 42; ) {
+    switch (jmp_var) {
+      case 2:
+        var sum;
+        sum = a + b;
+        jmp_var = 7;
+        break;
+      case 7:
+        return sum;
+        break;
+    }
+  }
+}
+```
+
+First, let's note a change. Instead of a `WhileStatement` we have a `ForStatement`. Taking into account the specific Loop type (`WhileStatement` / `ForStatement` / `DoWhileStatement`) is not an edge case (or could be, if we are talking about JSCrambler, as I've seen only `ForStatement`s used by them).<br/>
+Second, this is one of, if not, the easiest example there is. Our code has been split in 2 cases inside the switch case.<br/>
+Now, what is our problem, what are we trying to do? Well, we are trying to deflatten our flattened code. How do we this? For this example (and possible for all, until the last one) we'll do it manually:
+
+1. we keep track in our mind that the starting value for the `jmp_var` is 2
+1. we check the condition of the `ForStatement` to make sure we can even get in it and execute (let's say the condition would be `jmp_var === 42` thus making the code inside the `ForStatement` to never execute)
+1. we go inside the `ForStatement` and the `SwitchStatement` and focus on the `SwitchCase` that has the `test` property's value a `NumericLiteral` node having the value `2`
+1. we copy, in a file, the `Statement`s inside the `SwitchCase`'s body, excluding the `BreakStatement` and the `AssignmentExpression` where we assign a value to the `jmp_var` variable
+1. we keep in mind the new value and restart the process, going back to step 2, but this time the value will be `7`
+
+In the end, your file should contain the next code:
+
+```js
+function add(a, b) {
+  // here is where you place the collected Statements
+  var sum;
+  sum = a + b;
+  return sum;
+}
+```
+
+And there we have it, our first deflattened example. It only gets harder and worse from here.<br />
+But, before going to the 2nd example, let us dissect it a little bit and see how we could (or better said) should think of this problem in terms of computers. After all, we want the computer to run it all.<br />
+Well, we can think of this switch cases as nodes of a graph, better said, an oriented graph. Why is that? Every node points to another node, as we've seen (Edge case! Some nodes might not point to any other, our 2nd case (`case 7`) has only a return statement, no `AssignmentExpression` to change the jmp_var). Knowing the starting node (its value, the `jmp_var` variable value), we could traverse the graph, collect the needed statements and recreate the initial program (more or less).
+
+Rewriting our flattened `add` function as a graph, we'd have:
+
+![3](/assets/img/antibots/part-VIII/3.png)
+
+Mathematical notation:
+  - $$ G = Directed\ Graph $$
+  - $$ G = (V, E) $$
+  - $$ V = \{2, 7\} $$
+  - $$ E = \{\{2, 7\}\} $$
+
+Simply, the first node (2) links to the second node (7).
+
+(P.S. This is called a CFG - Control Flow Graph)
+
+
+## 2. Medium
+
+From
+
+```js
+function countToAndReturnSum(num) {
+  let sum = 0;
+  console.time(`countToAndReturnSum(${num})`);
+  for (let i = 1; i <= 30; i++) {
+    console.log(i);
+    sum += i;
+  }
+  console.timeEnd(`countToAndReturnSum(${num})`);
+  return sum;
+}
+
+countToAndReturnSum(30);
+```
+
+To
+
+```js
+function countToAndReturnSum(num) {
+  let jmp_var = 2;
+  while (jmp_var != 42) {
+    switch (jmp_var) {
+      case 7:
+        console.log(i);
+        sum += i;
+        i++;
+        jmp_var = 4;
+        break;
+      case 2:
+        var sum = 0;
+        var i = 1;
+        jmp_var = 5;
+        break;
+      case 5:
+        console.time(`countToAndReturnSum(${num})`);
+        jmp_var = 4;
+        break;
+      case 9:
+        console.timeEnd(`countToAndReturnSum(${num})`);
+        return sum;
+        break;
+      case 4:
+        jmp_var = i <= num ? 7 : 9;
+        break;
+    }
+  }
+}
+
+countToAndReturnSum(30);
+```
+
+Let me redo the diagram for this one:
+
+![4](/assets/img/antibots/part-VIII/4.png)
+
+Mathematical notation:
+  - $$ G = Directed\ Graph $$
+  - $$ G = (V, E) $$
+  - $$ V = \{2, 5, 4, 7, 9\} $$
+  - $$ E = \{\\\ \ \{2, 5\},\\\ \ \{5, 4\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$
+
+As we can see, here we have a node (7), that when (and if) we get to, it executes the statements inside of it and then goes back to one of its parents (in our case, the first-level parent).
+
+Some other thing to note is that we have useless node, node number `5`. Why is this a useless node? Well, we can just merge it with its first-level parent, node number `2`.<br/>
+Trying to find a general formula, off the top of my head I can define a __useless__ node as being a node that either:
+1. Has its first-level parent a node that points to him and him only and the current useless node doesn't get pointed to by any other node - in which case the node can be merge with its first-level parent
+1. Has its first-level child a node that only it points to and it only and the child node doesn't get pointed to by any other node - in which case the node can be merged with its first-level child
+
+Having this in mind, we can optimize:
+
+```js
+function countToAndReturnSum(num) {
+  let jmp_var = 2;
+  while (jmp_var != 42) {
+    switch (jmp_var) {
+      case 7:
+        console.log(i);
+        sum += i;
+        i++;
+        jmp_var = 4;
+        break;
+      case 2:
+        var sum = 0;
+        var i = 1;
+        console.time(`countToAndReturnSum(${num})`);
+        jmp_var = 4;
+        break;
+      case 9:
+        console.timeEnd(`countToAndReturnSum(${num})`);
+        return sum;
+        break;
+      case 4:
+        jmp_var = i <= num ? 7 : 9;
+        break;
+    }
+  }
+}
+
+countToAndReturnSum(30);
+```
+
+And its corresponding diagram:
+
+![5](/assets/img/antibots/part-VIII/5.png)
+
+Mathematical notation:
+  - $$ G = Directed\ Graph $$
+  - $$ G = (V, E) $$
+  - $$ V = \{2, 4, 7, 9\} $$
+  - $$ E = \{\\\ \ \{2, 4\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$
+
+There's one more thing I want to point out before we take a look at case number `4` that contains the main reason we use this example. The thing I wanna talk about is performance (same reason I used console.time and console.timeEnd). Control Flow Flattening, besides being a great obfuscation method, it slows down the app significantly, anywhere from 15% to an even 100% time increase, depending on configuration. Have this in mind if you ever need to use it.
+
+Now, back to our case number `4`.<br/>
+As you can see case `4` doesn't set our `jmp_var` to a specific value directly, it has the result of a `ConditionalExpression`
+
+## 3. Hard
+
+From
+
+```js
+
+```
+
+To
+
+```js
+
+```
+
+## 4. Geetest
+
+```js
+
+```
