@@ -172,7 +172,7 @@ From
 function countToAndReturnSum(num) {
   let sum = 0;
   console.time(`countToAndReturnSum(${num})`);
-  for (let i = 1; i <= 30; i++) {
+  for (let i = 1; i <= num; i++) {
     console.log(i);
     sum += i;
   }
@@ -282,25 +282,479 @@ Mathematical notation:
 There's one more thing I want to point out before we take a look at case number `4` that contains the main reason we use this example. The thing I wanna talk about is performance (same reason I used console.time and console.timeEnd). Control Flow Flattening, besides being a great obfuscation method, it slows down the app significantly, anywhere from 15% to an even 100% time increase, depending on configuration. Have this in mind if you ever need to use it.
 
 Now, back to our case number `4`.<br/>
-As you can see case `4` doesn't set our `jmp_var` to a specific value directly, it has the result of a `ConditionalExpression`
+As you can see case `4` doesn't set our `jmp_var` to a specific value directly, it has the result of a `ConditionalExpression`.<br/>
+A'ight, so how do we do this? I am a lover of simplicity, I love simple things (to not be confused with "simplistic"). So let's start with something simple, yet again: how we'd manually do it.<br/>
+We start from 2, so our chain looks like: $$ 2 $$. We then move to 4 and our chain looks like: $$ {2 \rightarrow 4} $$. Then we get to 7, again: $$ {2 \rightarrow 4 \rightarrow 7} $$. Then we get to 4 again: $$ {2 \rightarrow 4 \rightarrow 7 \rightarrow 4} $$. And we realize that we got the case `4` 2 times, so as any simple guy, I try to simplify. I realize that we are in a loop (Graph Cycle). So how would this $$ {4 \rightarrow 7 \rightarrow 4} $$ cycle look like redone? Kowalski, Analysis:<br/>
+1. First, case $$ 4 $$ gets executed at least once, so we could start with a do-while
+2. Second, are we ENTIRELY sure case $$ 7 $$ executes at least once? Well, not really... So we are back to a while loop or a for loop
+
+Is that it? For the start, yeah:
+
+```js
+// case 4 with 7 with 4 with ...
+
+// all instructions inside case 4 before the jmp_var assignment expression
+
+// while with the condition
+while (i <= num) {
+  // case 7 instructions w/o the break and jmp_var assignment expression
+  console.log(i);
+  sum += i;
+  i++;
+  // case 4 instructions w/o the break and jmp_var assignment expression
+
+}
+
+```
+
+Let's compare it to what we had initially:
+
+```js
+for(let i = 1; i <= num; i++){
+  console.log(i);
+  sum += i;
+}
+```
+
+Almost identical. A few differences are that the declaration (and definition) of our counter $$ i $$ have been extracted outside of the Loop initialization part, which is something that needs to be done by the obfuscator in order for it to be able to transform the Loop correctly. Another would be that we chose a WhileStatement instead of a ForStatement for our Loop. A simple transformation can be done and we'd get:<br/>
+
+```js
+for(; i <= num; i++){
+  console.log(i);
+  sum += i;
+}
+```
+
+Is everything we've done until now superficial? What happens if not just the first path takes us to a loop, but the second path, as well? Is that possible? If so, when would it be? But it can't be... It can't... The person that codes the initial script doesn't create something really complicated, they just need a loop... A for/while loop... Or maybe the obfuscator goes insane?...<br/>
+KIS.
+
+Alright enough crying and let's go for more trying.
+Manually going back to the original we get to:
+
+```js
+
+function countToAndReturnSum(num){
+  var sum = 0;
+  var i = 1;
+  console.time(`countToAndReturnSum(${num})`);
+  for(; i <= num; i++){
+    console.log(i);
+    sum += i;
+  }
+  console.timeEnd(`countToAndReturnSum(${num})`);
+  return sum;
+}
+
+countToAndReturnSum(30);
+
+```
+
+Other auxiliary transformations can be put in place post-deflattening to help beautify the script even more. One of this might be tracing the Loop counter, see its references and automatically bringing its declaration and definition inside the initialization part of the Loop
+
+```js
+
+function countToAndReturnSum(num){
+  var sum = 0;
+  console.time(`countToAndReturnSum(${num})`);
+  for(var i = 1; i <= num; i++){
+    console.log(i);
+    sum += i;
+  }
+  console.timeEnd(`countToAndReturnSum(${num})`);
+  return sum;
+}
+
+countToAndReturnSum(30);
+
+```
 
 ## 3. Hard
+
+> #### Disclaimer: this 3rd example is only for familiarizing you, the reader, with the additional features for CFF that JSCrambler provides. Only one of them will be showcased, but for our end goal of creating a simple deobfuscator for the Geetest script it is not needed
+
+JSCrambler says that CFF allows parametrization which increases the difficulty of reverse engineering it along with resilience against static code analysis (which is what we are doing for this specific tutorial). They mention 3 specific options: Clones (semantically equivalent clones), Dead Clones (dummy copies of basic blocks that are never executed) and Opaque Steps (which obfuscate the switching variable).
+
+Clones are not something for today. The same can be said about Opaque Steps (we might focus on these in the future I do get some feedback from you guys that lets me know you'd want that).
+
+Now we'll focus on the Dead Clones. These Dead Clones are paired with what we call Opaque Predicates.<br/>
+There's [this nice paper written by the guys over at The Pennsylvania University on Generalized Dynamic Opaque Predicates](https://faculty.ist.psu.edu/wu/papers/opaque-isc16.pdf) ([local alternative](/assets/img/antibots/part-VIII/opaque-isc16.pdf)) and [another great paper written by one of the author's of the other paper, Mr. Dongpeng Xu about opaque predicates in binary code](https://faculty.ist.psu.edu/wu/papers/dongpeng-xu-dissertation.pdf) ([local alternative](/assets/img/antibots/part-VIII/dongpeng-xu-dissertation.pdf)). Both are great to continue reading after this tutorial. For now we will make use of Mr Dongpeng Xu's dissertation (2nd paper mentioned), so credits go to him.
+
+As Mr Xu says, opaque predicates are predicates whose values are known to the obfuscator at obfuscation-time but difficult to deduce afterwards, at runtime.<br/>
+In Computer Science, predicates are conditional expressions (i.e. `counter <= max_len ? 1 : 2`) which evaluate to either true or false.
+
+We will exemplify the use of simple opaque predicates, getting inspiration from Mr Xu's work.
 
 From
 
 ```js
+function countToAndReturnSum(num) {
+  let sum = 0;
+  console.time(`countToAndReturnSum(${num})`);
+  for (let i = 1; i <= num; i++) {
+    console.log(i);
+    sum += i;
+  }
+  console.timeEnd(`countToAndReturnSum(${num})`);
+  return sum;
+}
 
+countToAndReturnSum(30);
 ```
 
 To
 
 ```js
+function countToAndReturnSum(num) {
+  let jmp_var = 2;
+  while (jmp_var != 42) {
+    switch (jmp_var) {
+      case 7:
+        console.log(i);
+        sum += i;
+        i++;
+        jmp_var = 4;
+        break;
+      case 2:
+        var sum = 0;
+        var i = 1;
+        console.time(`countToAndReturnSum(${num})`);
+        jmp_var = jmp_var * jmp_var < 0 ? 9 : 4;
+        break;
+      case 9:
+        console.timeEnd(`countToAndReturnSum(${num})`);
+        return sum;
+        break;
+      case 4:
+        jmp_var = i <= num ? 7 : 9;
+        break;
+    }
+  }
+}
 
+countToAndReturnSum(30);
 ```
+
+The initial CFG for this:
+
+![6](/assets/img/antibots/part-VIII/6.png)
+
+Mathematical notation:
+  - $$ G = Directed\ Graph $$
+  - $$ G = (V, E) $$
+  - $$ V = \{2, 4, 7, 9\} $$
+  - $$ E = \{\\\ \ \{2, 4\}, \{2, 9\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$
+
+If you were not aware, we've made it so the `AssignmentExpression` in case number $$ 2 $$ has been modified so that the `right` side of it doesn't point to a `NumericLiteral` anymore, but to a `ConditionalExpression` (our opaque predicate) that has the `test` set to $$ x^2 < 0 $$ (thanks to Mr Xu for the condition, Chapter 3.1 - Figure 3.1).
+
+If our test evaluates to true, it will directly go to case $$ 9 $$ (our final case that returns) and if it evaluates to false, it will continue its normal flow.
+
+If we were to think of it logically, we conclude that $$ x^2 \geq 0, \forall x \in \mathbb{R} $$ so that means that our predicate would always evaluate to false. This $$ x^2 $$ example is one of the simple ones, in real life applications (such as DRMs, malware, etc.) they get increasingly harder to solve. They are specifically used to deter Static Analysis (which is what we are doing here) and make us opt for evaluating code.
+
+For this to be viable we need to make sure we trace back (and in the correct order) how the variables in the condition have been modified to get to the final result.
+
+We have to be thoughtful when doing this, as CFF is not usually alone but paired with other transformations such as checks for Code Integrity which could lead us to have different values for our variables and go down a bad path (i.e. in our case this could be that x gets to be a Complex Number which leads our predicate to be evaluated to true).
+
+
+This was all just theoretical, and we won't get into it today. Let me know if I should in the future!
+
+Oh, and here's Mr Xu's figure redone if you really don't wanna open his paper (you should doe, pretty good work, credits to him!).
+
+![7](/assets/img/antibots/part-VIII/7.png)
 
 ## 4. Geetest
 
-```js
+The moment you have been waiting for, playing with the Geetest script's control-flow-flattening. The current Geetest script makes use of Opaque Steps discussed previously, so, we won't touch the full file. Rather, we'll go for the first big CFF blocks of code (and inner ones) that are basic;
 
+```js
+_gbhi.$_Ae = (function () {
+  var $_HIAJP = 2;
+  for (; $_HIAJP !== 1; ) {
+    switch ($_HIAJP) {
+      case 2:
+        return {
+          $_HIBAg: (function ($_HIBBi) {
+            var $_HIBCy = 2;
+            for (; $_HIBCy !== 14; ) {
+              switch ($_HIBCy) {
+                case 5:
+                  $_HIBCy = $_HIBDn < $_HIBES.length ? 4 : 7;
+                  break;
+                case 2:
+                  var $_HIBFR = "", $_HIBES = decodeURI("long encrypted string");
+                  $_HIBCy = 1;
+                  break;
+                case 1:
+                  var $_HIBDn = 0, $_HIBGf = 0;
+                  $_HIBCy = 5;
+                  break;
+                case 4:
+                  $_HIBCy = $_HIBGf === $_HIBBi.length ? 3 : 9;
+                  break;
+                case 8:
+                  $_HIBDn++, $_HIBGf++;
+                  $_HIBCy = 5;
+                  break;
+                case 3:
+                  $_HIBGf = 0;
+                  $_HIBCy = 9;
+                  break;
+                case 9:
+                  $_HIBFR += String.fromCharCode(
+                    $_HIBES.charCodeAt($_HIBDn) ^ $_HIBBi.charCodeAt($_HIBGf)
+                  );
+                  $_HIBCy = 8;
+                  break;
+                case 7:
+                  $_HIBFR = $_HIBFR.split("^");
+                  return function ($_HIBHA) {
+                    var $_HIBIe = 2;
+                    for (; $_HIBIe !== 1; ) {
+                      switch ($_HIBIe) {
+                        case 2:
+                          return $_HIBFR[$_HIBHA];
+                          break;
+                      }
+                    }
+                  };
+                  break;
+              }
+            }
+          })("Ut18Py"),
+        };
+        break;
+    }
+  }
+})();
 ```
  
+For the sake of this example, we'll rename a few variables just so we have an easy time:
+- `$_HIBIe` to `jmp_var`
+- `$_HIBCy` to `jmp_var`, as well, as it doesn't interfere in inner CFF blocks of code
+- `$_HIAJP` to `jmp_var`, again, for the same reason: it's not referenced in inner control-flow-flattened blocks of code
+- `$_HIBBi` to `key`, because we can easily deduce that it is related to a key for string decryption (it is passed as a StringLiteral to the IIFE)
+- `$_HIBFR` to `final_str_arr`, because it is a string array resulting from the decryption
+- `$_HIBES` to `enc_str`, because it is the long encrypted string that we have to decrypt
+- `$_HIBDn` to `enc_str_index`, because it is used to get the character code at its value from the `enc_str` variable
+- `$_HIBGf` to `key_index`, because it is used to get the character code at its value from the `key` variable
+- `$_HIBHA` to `index`
+
+```js
+_gbhi.$_Ae = (function () {
+  var jmp_var = 2;
+  for (; jmp_var !== 1; ) {
+    switch (jmp_var) {
+      case 2:
+        return {
+          $_HIBAg: (function (key) {
+            var jmp_var = 2;
+            for (; jmp_var !== 14; ) {
+              switch (jmp_var) {
+                case 5:
+                  jmp_var = enc_str_index < enc_str.length ? 4 : 7;
+                  break;
+                case 2:
+                  var final_str_arr = "",
+                   enc_str = decodeURI("long encrypted string");
+                  jmp_var = 1;
+                  break;
+                case 1:
+                  var enc_str_index = 0, key_index = 0;
+                  jmp_var = 5;
+                  break;
+                case 4:
+                  jmp_var = key_index === key.length ? 3 : 9;
+                  break;
+                case 8:
+                  enc_str_index++, key_index++;
+                  jmp_var = 5;
+                  break;
+                case 3:
+                  key_index = 0;
+                  jmp_var = 9;
+                  break;
+                case 9:
+                  final_str_arr += String.fromCharCode(
+                    enc_str.charCodeAt(enc_str_index) ^
+                     key.charCodeAt(key_index)
+                  );
+                  jmp_var = 8;
+                  break;
+                case 7:
+                  final_str_arr = final_str_arr.split("^");
+                  return function (index) {
+                    var jmp_var = 2;
+                    for (; jmp_var !== 1; ) {
+                      switch (jmp_var) {
+                        case 2:
+                          return final_str_arr[index];
+                          break;
+                      }
+                    }
+                  };
+                  break;
+              }
+            }
+          })("Ut18Py"),
+        };
+        break;
+    }
+  }
+})();
+```
+
+What is the basic blueprint?
+1. Detect control-flow-flattened blocks
+1. Convert them to graphs (our custom graph implementation)
+1. Convert the graphs to simple chains (combining nodes accordingly) for an easy flow that a human being can track and analyze
+1. Replace the cff blocks with our modified blocks
+
+One thing to mention before starting: as you can see, CFF blocks of code can be found inside one another so transformations will be done post-traversal (on node exit) because of mostly personal preference but also because we assume that the final result will be lighter in terms of nodes, thus meaning that doing them on node exit we'll speed up the process a little bit (mostly cause personal preference I am not sure how true the last statement will turn out to be).
+
+0. Set up the environment
+
+For this specific example we will be using typescript along with the Deno runtime as I have been accustomed with running typescript with ts-node but that is too slow for me.<br/>
+Thus, this is what a template ts file would look like for deno (along with types):
+
+```ts
+// @deno-types="npm:@types/babel__traverse"
+import {NodePath} from "npm:@types/babel__traverse";
+import {parse} from "npm:@babel/parser";
+import * as t from "npm:@babel/types";
+// @deno-types="npm:@types/babel__generator"
+import generate_all from "npm:@babel/generator";
+const generate = generate_all.default;
+// @deno-types="npm:@types/babel__traverse";
+import traverse_all from "npm:@babel/traverse";
+const traverse = traverse_all.default;
+
+// your code here
+// ...
+```
+
+This will not be included in the examples just to make it a tad easier for you to go through it all.
+
+After this is done, we also have to load the file, parse it, have a place where we can do our transformations on the AST and, in the end, to generate js from our AST and save it to a file.
+
+```ts
+// index.ts
+import * as fs from "node:fs";
+
+let AST = parse(fs.readFileSync("test.js").toString("utf-8"), {sourceType: "unambiguous"});
+
+// Our logic here
+// ...
+// Our logic here
+
+fs.writeFileSync("test_out.js", generate(AST, {retainFunctionParens: true, jsonCompatibleStrings: true}).code);
+```
+
+1. Detect control-flow-flattened blocks
+
+For start, we will analyze just our use case, generalizing is trivial for you to do given I have spoken a little bit about how you could do it in the examples previously shown.<br/>
+In our example (the `geetest` script) CFF blocks look something like this:
+```js
+var $JMP_VAR$ = 2;
+for (; $JMP_VAR$ !== 42; ) {
+  switch ($JMP_VAR$){
+    // ...
+  }
+}
+```
+
+The corresponding AST looks like: 
+
+```json
+{
+  "type": "File",
+  "program": {
+    "type": "Program",
+    "sourceType": "script",
+    "interpreter": null,
+    "body": [
+      {
+        "type": "VariableDeclaration",
+        "declarations": [
+          {
+            "type": "VariableDeclarator",
+            "id": { "type": "Identifier", "name": "$JMP_VAR$" },
+            "init": { "type": "NumericLiteral", "value": 2 }
+          }
+        ],
+        "kind": "var"
+      },
+      {
+        "type": "ForStatement",
+        "init": null,
+        "test": {
+          "type": "BinaryExpression",
+          "left": { "type": "Identifier", "name": "$JMP_VAR$" },
+          "operator": "!==",
+          "right": { "type": "NumericLiteral", "value": 42 }
+        },
+        "update": null,
+        "body": {
+          "type": "BlockStatement",
+          "body": [
+            {
+              "type": "SwitchStatement",
+              "discriminant": { "type": "Identifier", "name": "$JMP_VAR$" },
+              "cases": []
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+```ts
+// isCFFLoop.ts
+export function isCFFLoop(node: t.Node, prev: t.Node) {
+    return true &&
+
+    t.isVariableDeclaration(prev) &&
+    prev.declarations.length === 1 &&
+    t.isNumericLiteral(prev.declarations[0].init) &&
+    prev.declarations[0].init.value === 2 &&
+    t.isIdentifier(prev.declarations[0].id) &&
+
+    t.isForStatement(node) &&
+    node.init === null &&
+    node.update === null &&
+    t.isBinaryExpression(node.test) &&
+    t.isIdentifier(node.test.left) &&
+    node.test.left.name === prev.declarations[0].id.name &&
+
+    t.isBlockStatement(node.body) &&
+    node.body.body.length === 1 &&
+    t.isSwitchStatement(node.body.body[0]) &&
+    t.isIdentifier(node.body.body[0].discriminant) &&
+    node.body.body[0].discriminant.name === prev.declarations[0].id.name
+}
+```
+
+This leads us to:
+
+```ts
+// resolveCFF.ts
+import { isNullOrUndefined } from "./utils.ts";
+import { isCFFLoop } from "./isCFFLoop.ts";
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // get previous node
+        const prev_path = path.getPrevSibling();
+        if(isNullOrUndefined(prev_path) || isNullOrUndefined(prev_path.node))return;
+
+        // make sure we are at the right spot
+        if(!isCFFLoop(path.node, prev_path.node))return;
+
+        // now it's time to have some fun
+      },
+    },
+  });
+}
+```
