@@ -68,7 +68,7 @@ const mdxComponents = {
       <pre
         className={props.className.concat(" relative outline outline-1")}
         // @ts-ignore
-        children={[].concat(<CopyButton></CopyButton>,props.children)}
+        children={[].concat(<CopyButton></CopyButton>,[props.children])}
       ></pre>
     );
   },
