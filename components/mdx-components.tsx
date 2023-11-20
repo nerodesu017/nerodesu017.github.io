@@ -4,6 +4,7 @@ import { useMDXComponent } from "next-contentlayer/hooks";
 import { inspect } from "util";
 import { useState } from "react";
 import Math from "./math";
+import CopyButton from "./copy";
 // import {} from "@next/mdx"
 
 const components = {
@@ -60,7 +61,17 @@ const mdxComponents = {
   //   // // console.log(pre_tag.);
   //   // return pre_tag
   // },
-  Math: Math
+  Math: Math,
+  pre: (props: { className: string; children: object }) => {
+    // @ts-ignore
+    return (
+      <pre
+        className={props.className.concat(" relative outline outline-1")}
+        // @ts-ignore
+        children={[].concat(<CopyButton></CopyButton>,props.children)}
+      ></pre>
+    );
+  },
 };
 
 interface MdxProps {

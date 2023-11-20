@@ -45,7 +45,7 @@ gtag('config', 'G-KDM1FLGF1R');
         className={`antialiased min-h-screen bg-white dark:bg-black text-black dark:text-slate-50 ${inter.className}`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="max-w-2xl mx-auto py-10 px-4">
+          <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl mx-auto py-10 px-4">
             <header>
               <div className="flex items-center justify-between">
                 <ModeToggle />
@@ -61,7 +61,7 @@ gtag('config', 'G-KDM1FLGF1R');
             {/* <div className="w-full h-0.5 my-8 bg-black dark:bg-white"></div> */}
             <hr className="mt-12 mb-12" />
             <footer>
-              <div className="prose dark:prose-invert">
+              <div className="prose max-w-full dark:prose-invert mx-auto">
                 Hi, I&apos;m nero and this is my blog! It is mainly for coding
                 and reverse engineering.
                 <br />You like what you see and wanna support me? Ask me about my crypto addresses, hmu with a

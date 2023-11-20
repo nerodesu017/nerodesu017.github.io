@@ -4,7 +4,10 @@ import { allPosts } from "contentlayer/generated";
 import { Metadata } from "next";
 import { Mdx } from "@/components/mdx-components";
 
-import "./theme.css";
+import "./local.css";
+
+import "./light-theme.css";
+import "./dark-theme.css";
 import { dateToString } from "@/utils/dateToString";
 
 interface PostProps {
@@ -55,7 +58,7 @@ export default async function PostPage({ params }: PostProps) {
 
   return (
     <>
-      <article className="py-6 prose dark:prose-invert">
+      <article className="py-6 prose max-w-full dark:prose-invert">
         <h1 className="mb-1">{post.title}</h1>
         <div className="mb-2.5 text-gray-500 dark:text-gray-400">
           {post.author ? post.author + " - " : ""}

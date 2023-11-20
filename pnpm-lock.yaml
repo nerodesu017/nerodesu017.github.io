@@ -26,9 +26,15 @@ dependencies:
   autoprefixer:
     specifier: 10.4.14
     version: 10.4.14(postcss@8.4.23)
+  clsx:
+    specifier: ^2.0.0
+    version: 2.0.0
   contentlayer:
     specifier: ^0.3.2
     version: 0.3.2(esbuild@0.17.18)(typescript@5.0.4)
+  copy-text-to-clipboard:
+    specifier: ^3.2.0
+    version: 3.2.0
   eslint:
     specifier: 8.39.0
     version: 8.39.0
@@ -41,6 +47,9 @@ dependencies:
   next-contentlayer:
     specifier: ^0.3.2
     version: 0.3.2(esbuild@0.17.18)(next@13.4.1)(react-dom@18.2.0)(react@18.2.0)(typescript@5.0.4)
+  next-sitemap:
+    specifier: ^4.2.3
+    version: 4.2.3(next@13.4.1)
   next-themes:
     specifier: ^0.2.1
     version: 0.2.1(next@13.4.1)(react-dom@18.2.0)(react@18.2.0)
@@ -50,6 +59,9 @@ dependencies:
   react:
     specifier: 18.2.0
     version: 18.2.0
+  react-bootstrap-icons:
+    specifier: ^1.10.3
+    version: 1.10.3(react@18.2.0)
   react-dom:
     specifier: 18.2.0
     version: 18.2.0(react@18.2.0)
@@ -212,6 +224,10 @@ packages:
       type-fest: 3.10.0(typescript@5.0.4)
     transitivePeerDependencies:
       - typescript
+    dev: false
+
+  /@corex/deepmerge@4.0.43:
+    resolution: {integrity: sha512-N8uEMrMPL0cu/bdboEWpQYb/0i2K5Qn8eCsxzOmxSggJbbQte7ljMRoXm917AbntqTGOzdTu+vP3KOOzoC70HQ==}
     dev: false
 
   /@effect-ts/core@0.60.5:
@@ -667,6 +683,10 @@ packages:
 
   /@next/env@13.4.1:
     resolution: {integrity: sha512-eD6WCBMFjLFooLM19SIhSkWBHtaFrZFfg2Cxnyl3vS3DAdFRfnx5TY2RxlkuKXdIRCC0ySbtK9JXXt8qLCqzZg==}
+    dev: false
+
+  /@next/env@13.5.6:
+    resolution: {integrity: sha512-Yac/bV5sBGkkEXmAX5FWPS9Mmo2rthrOPRQQNfycJPkjUAUclomCPH7QFVCDQ4Mp2k2K1SSM6m0zrxYrOwtFQw==}
     dev: false
 
   /@next/eslint-plugin-next@13.3.1:
@@ -1573,6 +1593,11 @@ packages:
       wrap-ansi: 7.0.0
     dev: false
 
+  /clsx@2.0.0:
+    resolution: {integrity: sha512-rQ1+kcj+ttHG0MKVGBUXwayCCF1oh39BF5COIpRzuCEv8Mwjv0XucrI2ExNTOn9IlLifGClWQcU9BrZORvtw6Q==}
+    engines: {node: '>=6'}
+    dev: false
+
   /color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
     engines: {node: '>=7.0.0'}
@@ -1635,6 +1660,11 @@ packages:
       - markdown-wasm
       - supports-color
       - typescript
+    dev: false
+
+  /copy-text-to-clipboard@3.2.0:
+    resolution: {integrity: sha512-RnJFp1XR/LOBDckxTib5Qjr/PMfkatD0MUCQgdpqS8MdKiNUzBjAQBEN6oUy+jW7LI93BBG3DtMB2KOOKpGs2Q==}
+    engines: {node: '>=12'}
     dev: false
 
   /core-util-is@1.0.3:
@@ -4218,6 +4248,20 @@ packages:
       - typescript
     dev: false
 
+  /next-sitemap@4.2.3(next@13.4.1):
+    resolution: {integrity: sha512-vjdCxeDuWDzldhCnyFCQipw5bfpl4HmZA7uoo3GAaYGjGgfL4Cxb1CiztPuWGmS+auYs7/8OekRS8C2cjdAsjQ==}
+    engines: {node: '>=14.18'}
+    hasBin: true
+    peerDependencies:
+      next: '*'
+    dependencies:
+      '@corex/deepmerge': 4.0.43
+      '@next/env': 13.5.6
+      fast-glob: 3.2.12
+      minimist: 1.2.8
+      next: 13.4.1(@opentelemetry/api@1.4.1)(react-dom@18.2.0)(react@18.2.0)
+    dev: false
+
   /next-themes@0.2.1(next@13.4.1)(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-B+AKNfYNIzh0vqQQKqQItTS8evEouKD7H5Hj3kmuPERwddR2TxvDSFZuTj6T7Jfn1oyeUyJMydPl1Bkxkh0W7A==}
     peerDependencies:
@@ -4722,6 +4766,15 @@ packages:
 
   /queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
+    dev: false
+
+  /react-bootstrap-icons@1.10.3(react@18.2.0):
+    resolution: {integrity: sha512-j4hSby6gT9/enhl3ybB1tfr1slZNAYXDVntcRrmVjxB3//2WwqrzpESVqKhyayYVaWpEtnwf9wgUQ03cuziwrw==}
+    peerDependencies:
+      react: '>=16.8.6'
+    dependencies:
+      prop-types: 15.8.1
+      react: 18.2.0
     dev: false
 
   /react-dom@18.2.0(react@18.2.0):

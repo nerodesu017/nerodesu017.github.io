@@ -7,19 +7,30 @@ categories: [antibots, programming]
 tags: [geetest, antibot, antibots, programming, ast, manipulation]
 ---
 
+<style>
+{` 
+.dark img {
+  filter: invert(0) !important;
+}
+img {
+  filter: invert(1);
+}
+`}
+</style>
+
 <Math />
 
-# Disclaimer
+{/* # Disclaimer
 
 1. All content and information in this article is for informational and educational purposes only. 
 1. I own no rights over the Geetest script and if requested, the hosted script in this repo will be taken down.
 1. All the node types and properties (when talking about the AST) can be easily understood if you are copying the block codes and input them into [ASTExplorer](https://astexplorer.net/), but make sure you are using `@babel/parser` as the parser, hiding empty keys and hiding location data for an easier time.
-1. This obfuscation transformation/method/technique relies on Graphs which are specific to Discrete Math. If you something seems to not click for you throughout this article make sure you visit [Graph Theory](https://ggc-discrete-math.github.io/graph_theory.html) and [Notation for Graphs](https://www-student.cse.buffalo.edu/~atri/cse331/support/notation/graphs.html). If after visiting these, things still don't click and you reckon I have left something incomplete, please reach out to me ([Contact Page](https://nerodesu017.github.io/about) - and choose one of the ways presented in my Resume).
+1. This obfuscation transformation/method/technique relies on Graphs which are specific to Discrete Math. If you something seems to not click for you throughout this article make sure you visit [Graph Theory](https://ggc-discrete-math.github.io/graph_theory.html) and [Notation for Graphs](https://www-student.cse.buffalo.edu/~atri/cse331/support/notation/graphs.html). If after visiting these, things still don't click and you reckon I have left something incomplete, please reach out to me ([Contact Page](/about) - and choose one of the ways presented in my Resume). */}
 
 # Introduction
 
-Today we are taking a look at what Control Flow Flattening really means. We will go through different examples (from easy to hard), explain my process of thought, maybe even talk about some edge-cases, and finally we will work on a real example: A part of a Geetest script related to its captcha. The Geetest script can be found at [gcaptcha4.js](https://static.geetest.com/v4/static/v1.7.5-e975ac/js/gcaptcha4.js) - while also being available on [this blog's repo](/assets/scripts/gcaptcha4.js)<br/>
-Also, this article is somewhat of a rewrite of my last article on antibots, part VII, where I was taking a look at incapsula. Check that out, as well, if you want. (though, not needed)
+Today we are taking a look at what Control Flow Flattening really means. We will go through different examples (from easy to hard), explain my process of thought, maybe even talk about some edge-cases, and finally we will work on a real example: A part of a Geetest script related to its captcha. The Geetest script can be found at [gcaptcha4.js](https://static.geetest.com/v4/static/v1.7.5-e975ac/js/gcaptcha4.js) - while also being available on [this blog's repo](/assets/scripts/gcaptcha4.js).<br/>
+Also, this article is somewhat of a rewrite of my last article on antibots, part VII, where I was taking a look at incapsula. Check that out, as well, if you want. (though, not needed).
 
 # What is CFF (Control Flow Flattening)
 
@@ -80,11 +91,11 @@ Now, the obfuscated version looks more like this:
 
 ![2](/assets/img/antibots/part-VIII/2.png)
 
-Mathematical notation:
+{/* Mathematical notation:
   - $$ G = Directed\ Graph $$
   - $$ G = (V, E) $$
   - $$ V = \{2, 4, 7, 9\} $$
-  - $$ E = \{\{2, 4\}, \{4, 7\}, \{4, 9\}, \{7, 4\}\} $$
+  - $$ E = \{\{2, 4\}, \{4, 7\}, \{4, 9\}, \{7, 4\}\} $$ */}
 
 
 The first version is pretty straight forward and if you have a bit of programming experience you should be able to read it without any problems. The second one is a tad more complicated. The steps of the program have been broken down in pieces (the switch statement's cases) and then placed in a random order (at least in the code, in the diagram they are in order LTR). This is not the easiest example, nor the hardest, but it exists to give you an idea if you are not that familiar with CFF.
@@ -153,11 +164,11 @@ Rewriting our flattened `add` function as a graph, we'd have:
 
 ![3](/assets/img/antibots/part-VIII/3.png)
 
-Mathematical notation:
+{/* Mathematical notation:
   - $$ G = Directed\ Graph $$
   - $$ G = (V, E) $$
   - $$ V = \{2, 7\} $$
-  - $$ E = \{\{2, 7\}\} $$
+  - $$ E = \{\{2, 7\}\} $$ */}
 
 Simply, the first node (2) links to the second node (7).
 
@@ -223,11 +234,11 @@ Let me redo the diagram for this one:
 
 ![4](/assets/img/antibots/part-VIII/4.png)
 
-Mathematical notation:
+{/* Mathematical notation:
   - $$ G = Directed\ Graph $$
   - $$ G = (V, E) $$
   - $$ V = \{2, 5, 4, 7, 9\} $$
-  - $$ E = \{\\\ \ \{2, 5\},\\\ \ \{5, 4\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$
+  - $$ E = \{\\\ \ \{2, 5\},\\\ \ \{5, 4\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$ */}
 
 As we can see, here we have a node (7), that when (and if) we get to, it executes the statements inside of it and then goes back to one of its parents (in our case, the first-level parent).
 
@@ -273,11 +284,11 @@ And its corresponding diagram:
 
 ![5](/assets/img/antibots/part-VIII/5.png)
 
-Mathematical notation:
+{/* Mathematical notation:
   - $$ G = Directed\ Graph $$
   - $$ G = (V, E) $$
   - $$ V = \{2, 4, 7, 9\} $$
-  - $$ E = \{\\\ \ \{2, 4\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$
+  - $$ E = \{\\\ \ \{2, 4\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$ */}
 
 There's one more thing I want to point out before we take a look at case number `4` that contains the main reason we use this example. The thing I wanna talk about is performance (same reason I used console.time and console.timeEnd). Control Flow Flattening, besides being a great obfuscation method, it slows down the app significantly, anywhere from 15% to an even 100% time increase, depending on configuration. Have this in mind if you ever need to use it.
 
@@ -370,7 +381,7 @@ countToAndReturnSum(30);
 
 ## 3. Hard
 
-> #### Disclaimer: this 3rd example is only for familiarizing you, the reader, with the additional features for CFF that JSCrambler provides. Only one of them will be showcased, but for our end goal of creating a simple deobfuscator for the Geetest script it is not needed
+{/* > #### Disclaimer: this 3rd example is only for familiarizing you, the reader, with the additional features for CFF that JSCrambler provides. Only one of them will be showcased, but for our end goal of creating a simple deobfuscator for the Geetest script it is not needed */}
 
 JSCrambler says that CFF allows parametrization which increases the difficulty of reverse engineering it along with resilience against static code analysis (which is what we are doing for this specific tutorial). They mention 3 specific options: Clones (semantically equivalent clones), Dead Clones (dummy copies of basic blocks that are never executed) and Opaque Steps (which obfuscate the switching variable).
 
@@ -438,11 +449,11 @@ The initial CFG for this:
 
 ![6](/assets/img/antibots/part-VIII/6.png)
 
-Mathematical notation:
+{/* Mathematical notation:
   - $$ G = Directed\ Graph $$
   - $$ G = (V, E) $$
   - $$ V = \{2, 4, 7, 9\} $$
-  - $$ E = \{\\\ \ \{2, 4\}, \{2, 9\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$
+  - $$ E = \{\\\ \ \{2, 4\}, \{2, 9\},\\\ \ \{4, 7\}, \{4, 9\},\\\ \ \{7, 4\}\\ \} $$ */}
 
 If you were not aware, we've made it so the `AssignmentExpression` in case number $$ 2 $$ has been modified so that the `right` side of it doesn't point to a `NumericLiteral` anymore, but to a `ConditionalExpression` (our opaque predicate) that has the `test` set to $$ x^2 < 0 $$ (thanks to Mr Xu for the condition, Chapter 3.1 - Figure 3.1).
 
