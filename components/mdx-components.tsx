@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useMDXComponent } from "next-contentlayer/hooks";
 import { inspect } from "util";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import Math from "./math";
 import CopyButton from "./copy";
 // import {} from "@next/mdx"
@@ -62,14 +62,17 @@ const mdxComponents = {
   //   // return pre_tag
   // },
   Math: Math,
-  pre: (props: { className: string; children: object }) => {
+  pre: (props: { className: string; children: ReactNode }) => {
     // @ts-ignore
     return (
       <pre
-        className={props.className.concat(" relative outline outline-1")}
+        className={([] as string[]).concat(props.className || "", " relative outline outline-1").join("")}
         // @ts-ignore
-        children={[].concat(<CopyButton></CopyButton>,[props.children])}
-      ></pre>
+        // children={[<CopyButton></CopyButton>,props.children]}
+      >
+        <CopyButton />
+        {props.children}
+      </pre>
     );
   },
 };
