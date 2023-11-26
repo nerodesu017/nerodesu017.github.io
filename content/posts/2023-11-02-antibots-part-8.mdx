@@ -98,7 +98,7 @@ Now, the obfuscated version looks more like this:
   - $$ E = \{\{2, 4\}, \{4, 7\}, \{4, 9\}, \{7, 4\}\} $$ */}
 
 
-The first version is pretty straight forward and if you have a bit of programming experience you should be able to read it without any problems. The second one is a tad more complicated. The steps of the program have been broken down in pieces (the switch statement's cases) and then placed in a random order (at least in the code, in the diagram they are in order LTR). This is not the easiest example, nor the hardest, but it exists to give you an idea if you are not that familiar with CFF.
+The first version is pretty straightforward and if you have a bit of programming experience you should be able to read it without any problems. The second one is a tad more complicated. The steps of the program have been broken down in pieces (the switch statement's cases) and then placed in a random order (at least in the code, in the diagram they are in order LTR). This is not the easiest example, nor the hardest, but it exists to give you an idea if you are not that familiar with CFF.
 
 We'll get back to this example a bit later, for now let's see some easier ones and explain my process of thought.
 
@@ -244,7 +244,7 @@ As we can see, here we have a node (7), that when (and if) we get to, it execute
 
 Some other thing to note is that we have useless node, node number `5`. Why is this a useless node? Well, we can just merge it with its first-level parent, node number `2`.<br/>
 Trying to find a general formula, off the top of my head I can define a __useless__ node as being a node that either:
-1. Has its first-level parent a node that points to him and him only and the current useless node doesn't get pointed to by any other node - in which case the node can be merge with its first-level parent
+1. Has its first-level parent a node that points to it and it only and the current useless node doesn't get pointed to by any other node - in which case the node can be merge with its first-level parent
 1. Has its first-level child a node that only it points to and it only and the child node doesn't get pointed to by any other node - in which case the node can be merged with its first-level child
 
 Having this in mind, we can optimize:
@@ -653,11 +653,13 @@ import * as fs from "node:fs";
 let AST = parse(fs.readFileSync("test.js").toString("utf-8"), {sourceType: "unambiguous"});
 
 // Our logic here
-// ...
+resolveCFF(AST);
 // Our logic here
 
 fs.writeFileSync("test_out.js", generate(AST, {retainFunctionParens: true, jsonCompatibleStrings: true}).code);
 ```
+
+---
 
 1. Detect control-flow-flattened blocks
 
@@ -724,19 +726,39 @@ The corresponding AST looks like:
 export function isCFFLoop(node: t.Node, prev: t.Node) {
     return true &&
 
+    /**
+     * Make sure the previous statement looks roughly like this:
+     * 
+     * var $JMP_VAR$ = 2;
+     */
     t.isVariableDeclaration(prev) &&
     prev.declarations.length === 1 &&
     t.isNumericLiteral(prev.declarations[0].init) &&
     prev.declarations[0].init.value === 2 &&
     t.isIdentifier(prev.declarations[0].id) &&
 
+    /**
+     * Make sure the current node is the ForStatement that we are searching for
+     * 
+     * for(; $JMP_VAR$ <<OPERATOR>> NUMERIC_LITERAL;){
+     *  // ...
+     * }
+     */
     t.isForStatement(node) &&
     node.init === null &&
     node.update === null &&
     t.isBinaryExpression(node.test) &&
+    node.test.operator === "!==" &&
     t.isIdentifier(node.test.left) &&
     node.test.left.name === prev.declarations[0].id.name &&
 
+    /**
+     * Make sure the ForStatement's body is a CFF one
+     * 
+     * switch($JMP_VAR$){
+     *  // ...
+     * }
+     */
     t.isBlockStatement(node.body) &&
     node.body.body.length === 1 &&
     t.isSwitchStatement(node.body.body[0]) &&
@@ -749,7 +771,6 @@ This leads us to:
 
 ```ts
 // resolveCFF.ts
-import { isNullOrUndefined } from "./utils.ts";
 import { isCFFLoop } from "./isCFFLoop.ts";
 
 export function resolveCFF(AST: t.Program | t.File) {
@@ -758,14 +779,330 @@ export function resolveCFF(AST: t.Program | t.File) {
       exit(path: NodePath<t.Loop>) {
         // get previous node
         const prev_path = path.getPrevSibling();
-        if(isNullOrUndefined(prev_path) || isNullOrUndefined(prev_path.node))return;
+        if(prev_path.node === undefined)return;
 
         // make sure we are at the right spot
         if(!isCFFLoop(path.node, prev_path.node))return;
 
         // now it's time to have some fun
+        // ...
       },
     },
   });
 }
 ```
+
+---
+
+2. Convert them to graphs (our custom graph implementation)
+
+Now it's time to convert them to graphs. For this, we'll use a custom graph implementation.
+
+```ts
+// CFFGraph.ts
+export class CFFGraph {
+  public start: number;
+  public end: number;
+  private _vertices: Map<number, CFFNode>;
+  private _edges: Map<number, Set<number>>;
+  public jmp_var_name: string;
+
+  get edges() {
+    return this._edges;
+  }
+
+  addEdge(v1: number, v2: number) {
+    if (!this._edges.has(v1)) this._edges.set(v1, new Set());
+    // @ts-expect-error: edges.get(v1) should exist as previously set
+    this._edges.get(v1).add(v2);
+  }
+
+  get vertices() {
+    return this._vertices;
+  }
+
+  getVertex(vertex: number) {
+    return this._vertices.get(vertex);
+  }
+
+  addVertex(vertex: CFFNode) {
+    this._vertices.set(vertex.value, vertex);
+    this.addEdge(vertex.value, vertex.consequent);
+    if (!Number.isNaN(vertex.alternate))
+      this.addEdge(vertex.value, vertex.alternate);
+  }
+
+  constructor() {
+    this.start = NaN;
+    this.end = NaN;
+    this._vertices = new Map();
+    this._edges = new Map();
+    this.jmp_var_name = "";
+  }
+
+  prettyPrint(){
+    console.log("\n--\tPretty print graph\t--");
+    Array.from(this.vertices.values()).forEach(vertex => {
+        console.log(`${vertex.value} => [${vertex.consequent + (!Number.isNaN(vertex.alternate) ? ", " + vertex.alternate : "")}]`);
+    });
+    console.log("--\tPretty print graph\t--\n");
+  }
+
+  getParents(node_val: number){
+    return Array.from(this.vertices.entries()).map(([_node_val, nodes_it_points_to]) => {
+      if(_node_val === node_val)return undefined;
+      if(![nodes_it_points_to.consequent, nodes_it_points_to.alternate].includes(node_val))return undefined;
+      return _node_val;
+    }).filter(node_val => node_val !== undefined);
+  }
+
+  getChildren(node_val: number){
+    const node = this.getVertex(node_val);
+    if(!node)return []
+
+    const children = [node.consequent];
+    !Number.isNaN(node.alternate) && children.push(node.alternate);
+
+    return children;
+  }
+}
+
+export class CFFNode {
+  public value: number;
+  public inside: t.Statement[];
+  public test_expression: t.BooleanLiteral | t.BinaryExpression;
+  public if_true: number;
+  public if_false: number;
+
+  constructor(value: number, if_true?: number, if_false?: number, test_expression?: t.BooleanLiteral | t.BinaryExpression, inside?: t.Statement[]){
+    this.value = value;
+    this.test_expression = test_expression || t.booleanLiteral(true);
+    this.if_true = if_true || NaN;
+    this.if_false = if_false || NaN;
+    this.inside = inside || [];
+  }
+
+  setConsequent(consequent: number){
+    this.if_true = consequent;
+  }
+
+  setAlternate(alternate: number){
+    this.if_false = alternate;
+  }
+
+  get consequent(){
+    return this.if_true;
+  }
+
+  get alternate(){
+    return this.if_false;
+  }
+}
+```
+
+Now, let me explain a little bit about the implementation:
+
+### CFFNode
+
+The CFFNode class is the class that represents each SwitchCase.
+
+The value of each CFFNode instance represents the discriminant of the SwitchCase.
+
+The inside represents the statements that are found inside each SwitchCase, but without the final BreakStatement (that is because breaks are only needed since we are inside a SwitchStatement, but when we get rid of the CFF we won't need them anymore).
+
+Lastly, the consequent and alternate. Let's go back a little and take a look at how the `jmp_var` was being updated:
+  1. `$JMP_VAR$ = NUMERIC_LITERAL`
+  1. `$JMP_VAR$ = CONDITIONAL_EXPRESSION` => `$JMP_VAR$ = BINARY_EXPRESSION ? NUMERIC_LITERAL_1 : NUMERIC_LITERAL_2`
+
+The first can be written as: `$JMP_VAR$ = true ? NUMERIC_LITERAL : NaN` thus making us need only one type of node, the latter.
+
+
+The CFFGraph class represents the whole graph. This is pretty self explanatory.
+
+Also, we keep track of edges in the CFFGraph class while also keeping track of children nodes in each node. This works well for when we'll transform stuff.
+
+```ts
+// CFFGraph.ts
+
+class CFFGraph {
+  // ...
+
+    populate(node: t.ForStatement, prev: t.Statement) {
+    this.jmp_var_name = (
+      (node.test as t.BinaryExpression).left as t.Identifier
+    ).name;
+
+    this.start = (
+      (prev as t.VariableDeclaration).declarations[0].init as t.NumericLiteral
+    ).value;
+    this.end = (
+      (node.test as t.BinaryExpression).right as t.NumericLiteral
+    ).value;
+
+    // transform the array of switch cases to a map
+    // this indirectly helps us to trace just nodes that might be executed
+    // all other nodes (that are not connected) will be removed from the graph
+    const switch_statement = (node.body as t.BlockStatement)
+      .body[0] as t.SwitchStatement;
+
+    const switch_case_map: Map<number, t.Statement[]> = new Map();
+
+    for (const switch_case of switch_statement.cases) {
+      switch_case_map.set(
+        (switch_case.test as t.NumericLiteral).value,
+        switch_case.consequent.map((node) => t.cloneDeepWithoutLoc(node))
+      );
+    }
+
+    // trace from start node
+    const already_visited: Set<number> = new Set();
+    const queue: number[] = [this.start];
+    while (queue.length !== 0) {
+      const curr = queue.shift();
+      if (curr === undefined) break;
+      if (already_visited.has(curr)) continue;
+      already_visited.add(curr);
+      const curr_switch_case = switch_case_map.get(curr);
+      if (curr_switch_case === undefined) break;
+
+      // remove unneeded break statements
+      // for this example we will not get in-depth
+      // we'll just check the last statement to make sure it is a break and remove it
+      {
+        const last_statement = curr_switch_case.at(-1);
+        if (t.isBreakStatement(last_statement)) curr_switch_case.pop();
+      }
+
+      // find jmp_var assignment
+      let test_expression: t.BooleanLiteral | t.BinaryExpression =
+        t.booleanLiteral(true);
+      let if_true = NaN;
+      let if_false = NaN;
+
+      for (let i = 0; i < curr_switch_case.length; i++) {
+        const body_node = curr_switch_case.at(i);
+        if (!t.isExpressionStatement(body_node)) continue;
+        const expr = body_node.expression;
+        if (!t.isAssignmentExpression(expr)) continue;
+
+        if (expr.operator !== "=") continue;
+        if (!t.isIdentifier(expr.left)) continue;
+        if (expr.left.name !== this.jmp_var_name) continue;
+
+        const right = expr.right;
+
+        // remove this assignment expr
+        curr_switch_case.splice(i, 1);
+
+        switch (right.type) {
+          case "NumericLiteral":
+            if_true = right.value;
+            break;
+          case "ConditionalExpression":
+            {
+              if (!t.isBinaryExpression(right.test))
+                throw new Error(
+                  "ConditionalExpression test is not BinaryExpression!"
+                );
+              test_expression = t.cloneDeepWithoutLoc(right.test);
+              if (!t.isNumericLiteral(right.consequent))
+                throw new Error(
+                  "Consequent of ConditionalExpression is not a NumericLiteral, but " +
+                    right.consequent.type
+                );
+              if (!t.isNumericLiteral(right.alternate))
+                throw new Error(
+                  "Alternate of ConditionalExpression is not a NumericLiteral, but " +
+                    right.alternate.type
+                );
+
+              if_true = right.consequent.value;
+              if_false = right.alternate.value;
+            }
+            break;
+          default:
+            throw new Error("Unknown node type: " + right.type);
+        }
+      }
+
+      // add the node to the graph
+      this.addVertex(
+        new CFFNode(
+          curr,
+          if_true,
+          if_false,
+          test_expression,
+          switch_case_map.get(curr)
+        )
+      );
+
+      // add children to queue to be visited
+      if (!Number.isNaN(if_true)) queue.push(if_true);
+      if (!Number.isNaN(if_false)) queue.push(if_false);
+    }
+  }
+
+  // ...
+}
+```
+
+```ts
+// resolveCFF.ts
+// inside our Loop visitor
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // ...
+
+        const cff_graph = new CFFGraph();
+        cff_graph.populate(path.node, prev_path.node);
+
+        // for debugging purposes only
+        cff_graph.prettyPrint();
+      },
+    },
+  });
+}
+```
+
+
+After running `deno run index.ts` we should get:
+
+```
+> deno run index.ts
+
+--      Pretty print graph      --
+2 => [NaN]
+--      Pretty print graph      --
+
+
+--      Pretty print graph      --
+2 => [1]
+1 => [5]
+5 => [4, 7]
+4 => [3, 9]
+7 => [NaN]
+3 => [9]
+9 => [8]
+8 => [5]
+--      Pretty print graph      --
+
+
+--      Pretty print graph      --
+2 => [NaN]
+--      Pretty print graph      --
+
+```
+
+---
+
+3. Convert the graphs to simple chains (combining nodes accordingly) for an easy flow that a human being can track and analyze
+
+The graph that we've built last step looks like this:
+
+![8](/assets/img/antibots/part-VIII/8.png)
+
+What we can observe from this is that nodes `8` and `1` are what we have previously called useless nodes (either `8` and `1` or `2` and `9`, but we will consider the child node the useless node). What we can do is merge them in their parent nodes. So let's do it.
+
