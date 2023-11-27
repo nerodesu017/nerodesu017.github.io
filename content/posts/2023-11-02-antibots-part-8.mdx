@@ -648,6 +648,7 @@ After this is done, we also have to load the file, parse it, have a place where 
 
 ```ts
 // index.ts
+
 import * as fs from "node:fs";
 
 let AST = parse(fs.readFileSync("test.js").toString("utf-8"), {sourceType: "unambiguous"});
@@ -723,6 +724,7 @@ The corresponding AST looks like:
 
 ```ts
 // isCFFLoop.ts
+
 export function isCFFLoop(node: t.Node, prev: t.Node) {
     return true &&
 
@@ -771,6 +773,7 @@ This leads us to:
 
 ```ts
 // resolveCFF.ts
+
 import { isCFFLoop } from "./isCFFLoop.ts";
 
 export function resolveCFF(AST: t.Program | t.File) {
@@ -800,6 +803,7 @@ Now it's time to convert them to graphs. For this, we'll use a custom graph impl
 
 ```ts
 // CFFGraph.ts
+
 export class CFFGraph {
   public start: number;
   public end: number;
@@ -1120,34 +1124,44 @@ class CFFGraph {
 
   // inspired by https://github.com/babel/babel/blob/main/packages/babel-types/src/traverse/traverseFast.ts
   // 1.
-  static traverse(
-    {
-      current,
-      cff_graph,
-      enter,
-      exit,
-      state,
-      visited
-    }: {
-      current: number;
-      cff_graph: CFFGraph;
-      enter: (node: CFFNode, graph_ref: CFFGraph, visited: Set<number>) => void;
-      exit?: (node: CFFNode, graph_ref: CFFGraph, visited: Set<number>) => void;
-      state?: object;
-      visited?: Set<number>;
-    }
-  ) {
+  static traverse({
+    current,
+    cff_graph,
+    enter,
+    exit,
+    state,
+    visited,
+  }: {
+    current: number;
+    cff_graph: CFFGraph;
+    enter?: (
+      node: CFFNode,
+      graph_ref: CFFGraph,
+      state: object,
+      visited: Set<number>
+    ) => void;
+    exit?: (
+      node: CFFNode,
+      graph_ref: CFFGraph,
+      state: object,
+      visited: Set<number>
+    ) => void;
+    state?: object;
+    visited?: Set<number>;
+  }) {
+    if (!enter && !exit) return;
+
     const node = cff_graph.getVertex(current);
     if (node === undefined) return;
 
     if (!state) state = {};
-    if(!visited) visited = new Set();
+    if (!visited) visited = new Set();
 
-    if(visited.has(current))return;
+    if (visited.has(current)) return;
 
     visited.add(current);
 
-    enter(node, cff_graph, visited);
+    enter && enter(node, cff_graph, state, visited);
 
     for (const child of cff_graph.getChildren(current)) {
       CFFGraph.traverse({
@@ -1156,11 +1170,11 @@ class CFFGraph {
         enter: enter,
         exit: exit,
         state: state,
-        visited: visited
+        visited: visited,
       });
     }
 
-    exit && exit(node, cff_graph, visited);
+    exit && exit(node, cff_graph, state, visited);
 
     visited.delete(current);
   }
@@ -1206,17 +1220,15 @@ class CFFGraph {
 
   // 4.
   static traverseAndMergeUselessNodes(cff_graph: CFFGraph) {
-    const enter = (node: CFFNode, cff_graph: CFFGraph) => {
-      if (!cff_graph.canMergeNodeWithChildNode(node.value)) return;
-      cff_graph.mergeNodes(node.value, cff_graph.getChildren(node.value)[0]);
-      return;
-    };
-
     CFFGraph.traverse({
       cff_graph: cff_graph,
       current: cff_graph.start,
-      enter: enter
-    })
+      enter: (node, cff_graph) => {
+        if (!cff_graph.canMergeNodeWithChildNode(node.value)) return;
+        cff_graph.mergeNodes(node.value, cff_graph.getChildren(node.value)[0]);
+        return;
+      }
+    });
   }
 
   // ...
@@ -1279,7 +1291,444 @@ Now, let's explain a few things:
   1. Traverse method - the static traverse method is a custom implementation of the babel traverseFast method. But, we do have a few modifications:
   -  First of all, we make use of both an enter and an exit function, not just an enter function. This is great because we can make modifications both pre-child traversal and post-child traversal. The same is possible when using @babel/traverse. Might turn out useful in the future
   - Second, we also keep track of the visited nodes. This is because, as opposed to traverseFast which operates on an AST in which child nodes don't directly have parent nodes as children, we do. That is because we have loops (`5 -> 4 -> 3 -> 9 -> 8 -> 5 (again)`). Not keeping track of visited nodes and early returning leads us to exceed the callstack size because of too much recursion. Some of you may wonder why we use a Set: the explanation is quite simple, searching in a Set is done in O(1) (as opposed to O(n) in an Array) and since iterating through the Set's element is done in insertion order ([developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set)), an array has no net-positives in our case
-  2. Merging - merging is done only in the parent node (in our case, while we are in node `2` instead of node `1` and node `9` while we are in node `8`). This is for traversing fewer nodes and thus having done fewer operations to get to the same answer. Merging can, in theory and practice, be done in both parent and child node
+  2. Merging - merging is done only in the parent node (in our case, while we are in node `2` instead of node `1` and node `9` while we are in node `8`). This is for traversing fewer nodes and thus having done fewer operations to get to the same result. Merging can, in theory and practice, be done in both parent and child nodes
 
 
-Next, let's take a look at node `3`.
+Next, let's take a look at node `3`. As you can can see, node `3` points to node `9` and its parent, node `4`, points to both `3` and `9`. Here's the condition found in node `4` that decides what node we go to next: `$_HIBGf === $_HIBBi.length ? 3 : 9` (`$key_index === $key.length ? 3 : 9`). Aha! Node `3` is basically an if statement. Okay then, so how do we figure out if a node is a Conditional Node? Starting from node `4` we fetch its children `3` and `9`, we get the parents of each child node, we check to see that for one of the children the number of parents is 2 and for the other is 1, and then we check to see that one of the parents for the node that has 2 is the other node. If that's the case and everything is alright, we can merge in the parent node an IfStatement. Sounds simple, right?
+
+```ts
+// CFFGraph.ts
+
+class CFFGraph {
+  // ...
+  static traverseAndMergeConditionalNodes(cff_graph: CFFGraph) {
+    CFFGraph.traverse({
+      cff_graph: cff_graph,
+      current: cff_graph.start,
+      enter: (node, cff_graph) => {
+        // 1. first we check to see that we are at the right node. in our case it will be node `4`
+        const children = cff_graph.getChildren(node.value);
+        if (children.length !== 2) return;
+
+        const [fcParents, scParents] = children.map((child) => {
+          return cff_graph.getParents(child);
+        });
+
+        if (
+          !(
+            (fcParents.length === 1 && scParents.length === 2) ||
+            (fcParents.length === 2 && scParents.length === 1)
+          )
+        ) {
+          return;
+        }
+
+        const [childWithTwoParents, childWithOneParent, parentsOfChild] =
+          fcParents.length === 2
+            ? [children[0], children[1], fcParents]
+            : [children[1], children[0], scParents];
+
+        if (!parentsOfChild.includes(childWithOneParent)) return;
+
+        // 2. next we attempt to merge the Conditional Node
+        const conditional_expr = t.cloneDeepWithoutLoc(
+          node.consequent === childWithOneParent
+            ? node.test_expression
+            : t.unaryExpression("!", node.test_expression),
+        );
+
+        const to_be_appended = t.ifStatement(
+          conditional_expr,
+          t.blockStatement(
+            // @ts-expect-error: childWithOneParent exists as a vertex
+            cff_graph
+              .getVertex(childWithOneParent)
+              .inside.map((statement) => t.cloneDeepWithoutLoc(statement)),
+          ),
+        );
+
+        node.inside.push(to_be_appended);
+
+        // 3. now we make sure to get rid of the Conditional Vertex
+        cff_graph._vertices.delete(childWithOneParent);
+        cff_graph._edges.delete(childWithOneParent);
+
+        // @ts-expect-error: node.value has 2 edges
+        cff_graph.edges.get(node.value).delete(childWithOneParent);
+
+        node.test_expression = t.booleanLiteral(true);
+        node.setConsequent(childWithTwoParents);
+        node.setAlternate(NaN);
+      },
+    });
+  }
+  // ...
+}
+```
+
+Aaaaaaand we also add the call to this method in our `resolveCFF.ts` file:
+
+```ts
+// resolveCFF.ts
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // ...
+
+        CFFGraph.traverseAndMergeConditionalNodes(cff_graph);
+
+        cff_graph.prettyPrint();
+      },
+    },
+  });
+}
+```
+
+And the output will look like this:
+
+```shell
+> deno run -A index.ts
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [5]
+  5 => [4, 7]
+  4 => [9]
+  7 => [NaN]
+  9 => [5]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+```
+
+The corresponding graph:
+
+![10](/assets/img/antibots/part-VIII/10.png)
+
+Great! But... Wait a second... Node `9` (or `4`, for simplicity I'll consider `9`) has now become a Useless Node. For the moment we'll call `traverseAndMergeUselessNodes` one more time inside our `resolveCFF.ts` file, and we'll touch more on this problem in the final section.
+
+
+```ts
+// resolveCFF.ts
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // ...
+
+        CFFGraph.traverseAndMergeUselessNodes(cff_graph);
+
+        cff_graph.prettyPrint();
+      },
+    },
+  });
+}
+```
+
+This outputs:
+
+```shell
+> deno run -A index.ts
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [5]
+  5 => [4, 7]
+  4 => [5]
+  7 => [NaN]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+```
+
+And the corresponding graph:
+
+![11](/assets/img/antibots/part-VIII/11.png)
+
+We now need to do one last transformation, and that is: to resolve the loops!
+
+If you remember, we also keep track of the visited nodes. This means, that when we'll do this traverse, when we get to node `9` and then try to look up its children, we'll see `5`, which is in the `visited` array. When something like this happens, we can conclude we are in a loop and merge the inside node.
+
+
+```ts
+// CFFGraph.ts
+
+class CFFGraph {
+  // ...
+
+  // we do this transformation at the child level
+  // easier for me this way
+  static traverseAndLoopNodes(cff_graph: CFFGraph) {
+    CFFGraph.traverse({
+      cff_graph: cff_graph,
+      current: cff_graph.start,
+      enter: (node, cff_graph, _, visited) => {
+        // 1. we check to make sure we are at the end of a loop
+        const children = cff_graph.getChildren(node.value);
+        // we assume that any final loop node points only to the beginning of the loop
+        // TODO: in the future, if there's 2 children, make it so the second one is treated
+        //       as a Conditional Node and merged
+        if (children.length !== 1) return;
+        const child = children[0];
+        if (!visited.has(child)) return;
+
+        const parents = cff_graph.getParents(node.value);
+        if (parents.length !== 1) return;
+        const parent = parents[0];
+
+        if (child !== parent) return;
+
+        // 2. Merge Loop Node
+        const parentsChildren = cff_graph.getChildren(parent);
+        // @ts-expect-error: parent vertex exists
+        const parentNode: CFFNode = cff_graph.getVertex(parent);
+        const loop_expr = t.cloneDeepWithoutLoc(
+          parentsChildren[0] === node.value
+            ? parentNode.test_expression
+            : t.unaryExpression("!", parentNode.test_expression)
+        );
+
+        const to_be_appended = t.whileStatement(
+          loop_expr,
+          t.blockStatement(
+            node.inside.map((statement) => t.cloneDeepWithoutLoc(statement))
+          )
+        );
+
+        parentNode.inside.push(to_be_appended);
+
+        const isConsequent = parentsChildren[0] === node.value;
+
+         // 3. now we make sure to get rid of the Conditional Vertex
+         cff_graph.vertices.delete(node.value);
+         cff_graph.edges.delete(node.value);
+ 
+         // @ts-expect-error: node.value has 2 edges
+         cff_graph.edges.get(parent).delete(node.value);
+ 
+         parentNode.test_expression = t.booleanLiteral(true);
+         if(isConsequent){
+           parentNode.setConsequent(parentsChildren[1]);
+           parentNode.setAlternate(NaN);
+         }
+      },
+    });
+  }
+
+  // ...
+}
+```
+
+Now we call it inside `resolveCFF.ts`:
+
+```ts
+// resolveCFF.ts
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // ...
+
+        CFFGraph.traverseAndLoopNodes(cff_graph);
+
+        cff_graph.prettyPrint();
+      },
+    },
+  });
+}
+```
+
+This prints:
+
+```shell
+> deno run -A index.ts
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [5]
+  5 => [7]
+  7 => [NaN]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+```
+
+And the corresponding graph:
+
+![12](/assets/img/antibots/part-VIII/12.png)
+
+Lastly, we'll just do a simple trace function, kinda like the Useless Node merger.
+
+```ts
+// CFFGraph.ts
+
+class CFFGraph {
+  // ...
+
+  static trace(cff_graph: CFFGraph): t.Statement[] {
+    const statements: t.Statement[] = [];
+
+    let curr = cff_graph.getVertex(cff_graph.start);
+    while(curr !== undefined){
+      statements.push(...curr.inside);
+
+      const children = cff_graph.getChildren(curr.value);
+      if(children.length === 2)throw new Error(`Node '${curr.value}' has 2 children`);
+
+      const child = children[0];
+      if(Number.isNaN(child))break;
+
+      curr = cff_graph.getVertex(child);
+    }
+    return statements;
+  }
+  
+  // ...
+}
+```
+
+And calling it in our `resolveCFF.ts` file and replacing the big for loop with the inside nodes:
+
+```ts
+// resolveCFF.ts
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // ...
+
+        prev_path.remove();
+        path.replaceWithMultiple(CFFGraph.trace(cff_graph));
+      },
+    },
+  });
+}
+```
+
+So now, after running `deno run -A index.ts`, let's take a look at the final result inside our `deobbed.js` file:
+
+```js
+// deobbed.js
+
+_gbhi.$_Ae = (function () {
+  return {
+    $_HIBAg: (function ($_HIBBi) {
+      var $_HIBFR = "",
+        $_HIBES = decodeURI("LONG STRING");
+      var $_HIBDn = 0,
+        $_HIBGf = 0;
+      while ($_HIBDn < $_HIBES.length) {
+        if ($_HIBGf === $_HIBBi.length) {
+          $_HIBGf = 0;
+        }
+        $_HIBFR += String.fromCharCode($_HIBES.charCodeAt($_HIBDn) ^ $_HIBBi.charCodeAt($_HIBGf));
+        $_HIBDn++, $_HIBGf++;
+      }
+      $_HIBFR = $_HIBFR.split("^");
+      return function ($_HIBHA) {
+        return $_HIBFR[$_HIBHA];
+      };
+    })("Ut18Py")
+  };
+})();
+```
+
+And now renaming variables as previously shown:
+
+```js
+// deobbed.js
+
+_gbhi.$_Ae = (function () {
+  return {
+    $_HIBAg: (function (key) {
+      var final_str_arr = "",
+        enc_str = decodeURI("LONG STRING");
+      var enc_str_index = 0,
+        key_index = 0;
+      while (enc_str_index < enc_str.length) {
+        if (key_index === key.length) {
+          key_index = 0;
+        }
+        final_str_arr += String.fromCharCode(enc_str.charCodeAt(enc_str_index) ^ key.charCodeAt(key_index));
+        enc_str_index++, key_index++;
+      }
+      final_str_arr = final_str_arr.split("^");
+      return function (index) {
+        return final_str_arr[index];
+      };
+    })("Ut18Py")
+  };
+})();
+```
+
+Of course, this can be further beautified and we'd get something like this:
+
+```js
+_gbhi.$_Ae = (function () {
+  return {
+    $_HIBAg: (function (key) {
+      let final_str_arr = "";
+      const enc_str = decodeURI("LONG STRING");
+      for(let i = 0, j = 0; i < enc_str.length; i++, j++)
+      while (i < enc_str.length) {
+        if (j === key.length) j = 0;
+        final_str_arr += String.fromCharCode(enc_str.charCodeAt(i) ^ key.charCodeAt(j));
+      }
+      final_str_arr = final_str_arr.split("^");
+
+      return function (index) {
+        return final_str_arr[index];
+      };
+    })("Ut18Py")
+  };
+})();
+```
+
+Well, it's been quite a journey, but, like every other journey, it has to come to an end.
+
+### Final words
+
+I hope you learned something and that your understanding of graphs, how to traverse them and maybe other stuff, as well, has improved. Now, there's still a few things I wanna tackle:
+
+1. By no means what I have written above is perfect. In case of a lot of nodes it might be better to also keep the parents' value inside of them and not always search the parents in the graph's edges. Fetching children might also be better to do by having a getter inside the CFFNode class that can, on the spot, transform from consequent and alternate to an array representing the children. All that I've done here is showcase my way of thinking about Control-Flow Flattened blocks through graphs. A lot can be improved.
+2. Now, remember when I told you that the node `4` was also a Useless Node? And you also remember when I said we implement post-child traversal transformations? Well, we have to keep this in mind. First of all, it would be better if we were to modify nodes on exit, instead of modifying them on enter. Why is that? We might have loops inside of loops, or conditional nodes inside conditional nodes, or what not! If we do it on enter, only the inner-most one of these structures would get resolved (in our implementation of merging Loops this might not hold true, but from a glance I could see this being the case for Conditional Nodes - might be wrong though). While this might help a little: we are doing transformations one after the other... Manually. This is not great, this can be further improved by transforming traversals into visitors and modifying our way of traversing: we ought to, instead, traverse based on a Priority Queue. If we do this, every time we modify a node successfully (at least one operation takes place), we could place it back in the Prio Queue with the utmost priority, thus making it go through the transformations again. As it could have contained a Conditional Node inside a Loop Node inside a Useless Node, and thus we'd automatically do this without having to manually call methods.
+
+Also, I'll leave the final files here, in case anyone wants to play with them:
+
+[index.ts](/assets/files/antibots/part-VIII/index.ts)
+
+[isCFFLoop.ts](/assets/files/antibots/part-VIII/isCFFLoop.ts)
+
+[resolveCFF.ts](/assets/files/antibots/part-VIII/resolveCFF.ts)
+
+[CFFGraph.ts](/assets/files/antibots/part-VIII/CFFGraph.ts)
+
+[obf.js](/assets/files/antibots/part-VIII/obf.js)
+
+If you have enjoyed this article (or not) I would really appreciate your feedback. Hmu on discord, email, or anywhere else you can find me. Oh, and... Spread the word, it really helps! Cheers and see you soon.
