@@ -1070,30 +1070,29 @@ export function resolveCFF(AST: t.Program | t.File) {
 
 After running `deno run index.ts` we should get:
 
-```
-> deno run index.ts
+```shell
+> deno run -A index.ts
 
---      Pretty print graph      --
-2 => [NaN]
---      Pretty print graph      --
-
-
---      Pretty print graph      --
-2 => [1]
-1 => [5]
-5 => [4, 7]
-4 => [3, 9]
-7 => [NaN]
-3 => [9]
-9 => [8]
-8 => [5]
---      Pretty print graph      --
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
 
 
---      Pretty print graph      --
-2 => [NaN]
---      Pretty print graph      --
+  --      Pretty print graph      --
+  2 => [1]
+  1 => [5]
+  5 => [4, 7]
+  4 => [3, 9]
+  7 => [NaN]
+  3 => [9]
+  9 => [8]
+  8 => [5]
+  --      Pretty print graph      --
 
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
 ```
 
 ---
@@ -1106,3 +1105,181 @@ The graph that we've built last step looks like this:
 
 What we can observe from this is that nodes `8` and `1` are what we have previously called useless nodes (either `8` and `1` or `2` and `9`, but we will consider the child node the useless node). What we can do is merge them in their parent nodes. So let's do it.
 
+
+Here's the plan:
+  1. Create method for traversing
+  1. Create method for checking we are at a node that can be merged (only for parent nodes)
+  1. Create method for merging
+  1. Create method for traversing and merging useless nodes
+
+```ts
+// CFFGraph.ts
+
+class CFFGraph {
+  // ...
+
+  // inspired by https://github.com/babel/babel/blob/main/packages/babel-types/src/traverse/traverseFast.ts
+  // 1.
+  static traverse(
+    {
+      current,
+      cff_graph,
+      enter,
+      exit,
+      state,
+      visited
+    }: {
+      current: number;
+      cff_graph: CFFGraph;
+      enter: (node: CFFNode, graph_ref: CFFGraph, visited: Set<number>) => void;
+      exit?: (node: CFFNode, graph_ref: CFFGraph, visited: Set<number>) => void;
+      state?: object;
+      visited?: Set<number>;
+    }
+  ) {
+    const node = cff_graph.getVertex(current);
+    if (node === undefined) return;
+
+    if (!state) state = {};
+    if(!visited) visited = new Set();
+
+    if(visited.has(current))return;
+
+    visited.add(current);
+
+    enter(node, cff_graph, visited);
+
+    for (const child of cff_graph.getChildren(current)) {
+      CFFGraph.traverse({
+        cff_graph: cff_graph,
+        current: child,
+        enter: enter,
+        exit: exit,
+        state: state,
+        visited: visited
+      });
+    }
+
+    exit && exit(node, cff_graph, visited);
+
+    visited.delete(current);
+  }
+
+  // 2.
+  canMergeNodeWithChildNode(node_val: number): boolean {
+    const children = this.getChildren(node_val);
+    if (children.length > 1) return false;
+    const childs_parents = this.getParents(children[0]);
+    if (childs_parents.length > 1) return false;
+    return true;
+  }
+
+  // 3.
+  /**
+   *
+   * @param parent_val
+   * @param child_val
+   *
+   * Merging is done in the parent regardless
+   */
+  mergeNodes(parent_val: number, child_val: number) {
+    const parent_node = this.getVertex(parent_val);
+    if (!parent_node) return;
+    const child_node = this.getVertex(child_val);
+    if (!child_node) return;
+
+    if (!this.canMergeNodeWithChildNode(parent_val)) return false;
+
+    parent_node.inside.push(...child_node.inside);
+
+    parent_node.setConsequent(child_node.consequent);
+    parent_node.setAlternate(child_node.alternate);
+
+    parent_node.test_expression = child_node.test_expression;
+
+    this.vertices.delete(child_val);
+    this.edges.delete(child_val);
+
+    // @ts-expect-error: the parent exists
+    this.edges.get(parent_val).delete(child_val);
+  }
+
+  // 4.
+  static traverseAndMergeUselessNodes(cff_graph: CFFGraph) {
+    const enter = (node: CFFNode, cff_graph: CFFGraph) => {
+      if (!cff_graph.canMergeNodeWithChildNode(node.value)) return;
+      cff_graph.mergeNodes(node.value, cff_graph.getChildren(node.value)[0]);
+      return;
+    };
+
+    CFFGraph.traverse({
+      cff_graph: cff_graph,
+      current: cff_graph.start,
+      enter: enter
+    })
+  }
+
+  // ...
+}
+```
+
+Finally, we can just call it in our CFF file
+
+```ts
+// resolveCFF.ts
+
+export function resolveCFF(AST: t.Program | t.File) {
+  traverse(AST, {
+    Loop: {
+      exit(path: NodePath<t.Loop>) {
+        // ...
+
+        CFFGraph.traverseAndMergeUselessNodes(cff_graph);
+
+        cff_graph.prettyPrint();
+      },
+    },
+  });
+}
+```
+
+When running `index.ts` this leads us to:
+
+```shell
+> deno run -A index.ts
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [5]
+  5 => [4, 7]
+  4 => [3, 9]
+  7 => [NaN]
+  3 => [9]
+  9 => [5]
+  --      Pretty print graph      --
+
+
+  --      Pretty print graph      --
+  2 => [NaN]
+  --      Pretty print graph      --
+```
+
+As we can see, we got rid of the nodes `1` and `8`! Success!
+
+Our graph looks like this:
+
+![9](/assets/img/antibots/part-VIII/9.png)
+
+
+Now, let's explain a few things:
+  1. Traverse method - the static traverse method is a custom implementation of the babel traverseFast method. But, we do have a few modifications:
+  -  First of all, we make use of both an enter and an exit function, not just an enter function. This is great because we can make modifications both pre-child traversal and post-child traversal. The same is possible when using @babel/traverse. Might turn out useful in the future
+  - Second, we also keep track of the visited nodes. This is because, as opposed to traverseFast which operates on an AST in which child nodes don't directly have parent nodes as children, we do. That is because we have loops (`5 -> 4 -> 3 -> 9 -> 8 -> 5 (again)`). Not keeping track of visited nodes and early returning leads us to exceed the callstack size because of too much recursion. Some of you may wonder why we use a Set: the explanation is quite simple, searching in a Set is done in O(1) (as opposed to O(n) in an Array) and since iterating through the Set's element is done in insertion order ([developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set)), an array has no net-positives in our case
+  2. Merging - merging is done only in the parent node (in our case, while we are in node `2` instead of node `1` and node `9` while we are in node `8`). This is for traversing fewer nodes and thus having done fewer operations to get to the same answer. Merging can, in theory and practice, be done in both parent and child node
+
+
+Next, let's take a look at node `3`.
