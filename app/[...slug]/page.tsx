@@ -33,7 +33,19 @@ export async function generateMetadata({
   return {
     title: page.title,
     description: page.description,
-    keywords: page.keywords ? page.keywords : undefined
+    keywords: page.keywords ? page.keywords : undefined,
+    openGraph: {
+      images: ["/og.png"],
+      type: "article",
+      siteName: "Nerodesu017",
+      description: page.description
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: page.title,
+      images: ["/og.png"],
+      description: page.description,
+    }
   }
 }
 
@@ -51,7 +63,7 @@ export default async function PagePage({ params }: PageProps) {
   }
 
   return (
-    <article className="py-6 prose dark:prose-invert">
+    <article className="py-6 min-w-full prose dark:prose-invert">
       <h1>{page.title}</h1>
       {page.description && <p className="text-xl">{page.description}</p>}
       <hr />

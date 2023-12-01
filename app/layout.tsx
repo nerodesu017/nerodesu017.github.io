@@ -5,15 +5,30 @@ import { ThemeProvider } from "@/components/theme-provider";
 // import { Analytics } from "@/components/analytics";
 import { ModeToggle } from "@/components/mode-toggle";
 import Script from "next/script";
+import { Metadata } from "next";
 // import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: "Nero Deobfuscation Blog",
-  description:
-    "Hi, I'm nero! Join me in my adventure to tackle antibots (mainly), but also other stuff like the mathematics behind luck-based games, physics, and many more!",
-};
+const title = "Nero Deobfuscation Blog";
+const description = "Hi, I'm nero! Join me in my adventure to tackle antibots (mainly), but also other stuff like the mathematics behind luck-based games, physics, and many more!";
+export const metadata: Metadata = {
+  title: title,
+  description: description,
+  keywords: ["deobfuscation", "reverse engineering", "antibot", "antibots", "programming"],
+  openGraph: {
+    images: ["/og.png"],
+    type: "article",
+    siteName: "Nerodesu017",
+    description: description
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: title,
+    images: ["/og.png"],
+    description: description,
+  }
+  };
 
 interface RootLayoutProps {
   children: React.ReactNode;
