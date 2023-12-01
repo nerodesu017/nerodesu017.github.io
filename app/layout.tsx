@@ -80,7 +80,7 @@ gtag('config', 'G-KDM1FLGF1R');
                 Hi, I&apos;m nero and this is my blog! It is mainly for coding
                 and reverse engineering.
                 <br />You like what you see and wanna support me? Ask me about my crypto addresses, hmu with a
-                business opportunity or just, spread the word, it helps a lot! You can find ways to contact me in my <Link href={"/Andrew_resume.pdf"}>Resume</Link>
+                business opportunity or just, spread the word, it helps a lot! You can find ways to contact me in my <a href="/Andrew_resume.pdf">Resume</a>
               </div>
             </footer>
           </div>
