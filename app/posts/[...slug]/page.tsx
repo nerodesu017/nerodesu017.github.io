@@ -41,7 +41,7 @@ export async function generateMetadata({
     description: post.description,
     keywords: post.keywords ? post.keywords : undefined,
     openGraph: {
-      images: ["/og.png"],
+      images: ["https://nerodesu017.github.io/og.png"],
       type: "article",
       siteName: "Nerodesu017",
       description: post.description
@@ -49,7 +49,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: post.title,
-      images: ["/og.png"],
+      images: ["https://nerodesu017.github.io/og.png"],
       description: post.description,
     }
   };

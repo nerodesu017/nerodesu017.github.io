@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: description,
   keywords: ["deobfuscation", "reverse engineering", "antibot", "antibots", "programming"],
   openGraph: {
-    images: ["/og.png"],
+    images: ["https://nerodesu017.github.io/og.png"],
     type: "article",
     siteName: "Nerodesu017",
     description: description
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: title,
-    images: ["/og.png"],
+    images: ["https://nerodesu017.github.io/og.png"],
     description: description,
   }
   };
