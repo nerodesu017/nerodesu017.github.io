@@ -1,0 +1,566 @@
+---
+layout: post
+title: Babel Traverse - Part 3 - Diving a little in the actual @babel/traverse's traverse
+author: Nero
+date: 2023-12-27 00:03:00 +0300
+categories: [AST, programming]
+tags: [programming, ast, manipulation]
+---
+
+Today we are diving a little to see how `@babel/traverse`'s traverse actually works. A problem that I had required me to dig a little through the source code to find a solution, so I said why not share my process of thought.<br/>
+With this being said, we will take a look at the main traverse function, how the AST is actually being traversed and how a `NodePath` is being replaced (shallowly).
+
+### Context:
+
+I was writing a visitor for my traversals when a rather interesting error occured: `Maximum call stack size exceeded`.
+Previous encounters with this problem were because of the wrongful usage of a node without first deep cloning it using `types.cloneDeepWithoutLoc`.
+This, of course, hasn't worked this time.
+
+As you'll see, the answer was a simple `path.skip()`, which after enough trial-and-error and docs search would be found. The documentation, though, mentions the `skip()` method for not traversing the children, not the node itself. So I reckon'd it'd be a good time to get my hands dirty again in the `@babel/traverse` package.
+
+Since I don't want to specifically share the original visitor I was working on that lead to this problem (I literally can't ducking find it), here's a similar visitor that leads to the exact same result and requires the exact same solution:
+
+```ts
+// ...
+traverse(AST, {
+  BooleanLiteral(path){
+    const value = path.node.value;
+    path.replaceWith(t.booleanLiteral(!value));
+  }
+})
+// ...
+```
+
+And an input to work on:
+
+```ts
+if(true){
+  // ...
+}
+```
+
+---
+
+It all starts in `index.ts`
+
+```ts
+// @babel/traverse/src/index.ts
+function traverse<Options extends TraverseOptions>(
+  parent: t.Node,
+  // @ts-expect-error provide {} as default value for Options
+  opts: Options = {},
+  scope?: Scope,
+  state?: any,
+  parentPath?: NodePath,
+  visitSelf?: boolean,
+) {
+  if (!parent) return;
+
+  if (!opts.noScope && !scope) {
+    if (parent.type !== "Program" && parent.type !== "File") {
+      throw new Error(
+        "You must pass a scope and parentPath unless traversing a Program/File. " +
+          `Instead of that you tried to traverse a ${parent.type} node without ` +
+          "passing scope and parentPath.",
+      );
+    }
+  }
+
+  if (!parentPath && visitSelf) {
+    throw new Error("visitSelf can only be used when providing a NodePath.");
+  }
+
+  if (!VISITOR_KEYS[parent.type]) {
+    return;
+  }
+
+  visitors.explode(opts as Visitor);
+
+  traverseNode(
+    parent,
+    opts as ExplodedVisitor,
+    scope,
+    state,
+    parentPath,
+    /* skipKeys */ null,
+    visitSelf,
+  );
+}
+```
+
+The traverse function makes sure we are actually traversing a non-null node, that it is either a `Program` or `File` type node if we don't give it any scope, it can visitSelf if it has a NodePath given, if it actually has any kids to traverse.<br />
+Afterwards it explodes its given visitors (talked about previously) and starts the traverse.
+
+The traverseNode function looks like this:
+
+```ts
+// @babel/traverse/src/traverse-node.ts
+export function traverseNode<S = unknown>(
+  node: t.Node,
+  opts: ExplodedTraverseOptions<S>,
+  scope?: Scope,
+  state?: any,
+  path?: NodePath,
+  skipKeys?: Record<string, boolean>,
+  visitSelf?: boolean,
+): boolean {
+  const keys = VISITOR_KEYS[node.type];
+  if (!keys) return false;
+
+  const context = new TraversalContext(scope, opts, state, path);
+  if (visitSelf) {
+    if (skipKeys?.[path.parentKey]) return false;
+    return context.visitQueue([path]);
+  }
+
+  for (const key of keys) {
+    if (skipKeys?.[key]) continue;
+    if (context.visit(node, key)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+```
+
+As we can see, for every node being traversed, a new TraversalContext is created. For now we can ignore the Consequent of the IfStatement that checks if we self visit. Going directly to the for loop that calls the `visit` method on the created context, it will lead us to the visit method regardless.
+
+Following code refers to the `TraversalContext` class
+```ts
+// @babel/traverse/src/context.ts
+
+class TraversalContext<S = unknown> {
+
+  constructor(
+    scope: Scope,
+    opts: ExplodedTraverseOptions<S>,
+    state: S,
+    parentPath: NodePath,
+  ) {
+    this.parentPath = parentPath;
+    this.scope = scope;
+    this.state = state;
+    this.opts = opts;
+  }
+
+  // simple check to see if the passed node should be visited
+  shouldVisit(node: t.Node): boolean { /* ... */ }
+
+  // pushes node to this.queue or this.priorityQueue
+  maybeQueue(path: NodePath, notPriority?: boolean) { /* ... */ }
+
+  visitSingle(node: t.Node, key: string): boolean {
+    if (this.shouldVisit(node[key])) return this.visitQueue([this.create(node, node, key)]);
+    return false;
+  }
+
+  // the same thing as visitSingle, but the 4th argument to `this.create` is `listKey`
+  visitMultiple(container: t.Node[], parent: t.Node, listKey: string) { /* ... */ }
+
+  // calls visitSingle or visitMultiple depending on children nodes
+  visit(node: t.Node, key: string) { /* ... */ }
+
+  create(
+    node: t.Node,
+    container: t.Node | t.Node[],
+    key: string | number,
+    listKey?: string,
+  ): NodePath {
+    // We don't need to `.setContext()` here, since `.visitQueue()` already
+    // calls `.pushContext`.
+    return NodePath.get({
+      parentPath: this.parentPath,
+      parent: node,
+      container,
+      key: key,
+      listKey,
+    });
+  }
+
+  visitQueue(queue: Array<NodePath>): boolean {
+    this.queue = queue;
+    this.priorityQueue = [];
+    const visited = new WeakSet();
+    let stop = false;
+
+    for (const path of queue) {
+      path.resync();
+
+      if (
+        path.contexts.length === 0 ||
+        path.contexts[path.contexts.length - 1] !== this
+      ) 
+      path.pushContext(this);
+
+      // this path no longer belongs to the tree
+      if (path.key === null) continue;
+
+      // ensure we don't visit the same node twice
+      const { node } = path;
+      if (visited.has(node)) continue;
+      if (node) visited.add(node);
+
+      if (path.visit()) {
+        stop = true;
+        break;
+      }
+
+      if (this.priorityQueue.length) {
+        stop = this.visitQueue(this.priorityQueue);
+        this.priorityQueue = [];
+        this.queue = queue;
+        if (stop) break;
+      }
+    }
+
+    // clear queue
+    for (const path of queue) {
+      path.popContext();
+    }
+
+    this.queue = null;
+    return stop;
+  }
+}
+```
+
+The constructor is nothing out of the ordinary, we have the parentPath that we use to traverse the tree upwards. We then have the scope, so we can find binding references, the state (which we'll touch on later) and the opts which are basically the visitors.<br />
+The upcoming few methods are self explanatory and the only 2 that we are interested in are `create` and `visitQueue`.
+
+The `create` references the static `get` method of NodePath:
+
+```ts
+// @babel/traverse/src/path/index.ts
+class NodePath<T extends t.Node = t.Node> {
+  /* ... */
+  static get({
+    hub,
+    parentPath,
+    parent,
+    container,
+    listKey,
+    key,
+  }: {
+    hub?: HubInterface;
+    parentPath: NodePath | null;
+    parent: t.Node;
+    container: t.Node | t.Node[];
+    listKey?: string;
+    key: string | number;
+  }): NodePath {
+    if (!hub && parentPath) hub = parentPath.hub;
+
+    if (!parent) throw new Error("To get a node path the parent needs to exist");
+
+    const targetNode = container[key];
+
+    const paths = cache.getOrCreateCachedPaths(hub, parent);
+
+    let path = paths.get(targetNode);
+    if (!path) {
+      path = new NodePath(hub, parent);
+      if (targetNode) paths.set(targetNode, path);
+    }
+
+    path.setup(parentPath, container, listKey, key);
+
+    return path;
+  }
+  /* ... */
+}
+```
+
+The `visitQueue` method is a tad more interesting
+
+```ts
+class NodePath<T extends t.Node = t.Node> {
+  visitQueue(queue: Array<NodePath>): boolean {
+    this.queue = queue;
+    this.priorityQueue = [];
+    const visited = new WeakSet();
+    let stop = false;
+
+    for (const path of queue) {
+      path.resync();
+
+      if (
+        path.contexts.length === 0 ||
+        path.contexts[path.contexts.length - 1] !== this
+      ) 
+      path.pushContext(this);
+
+      // this path no longer belongs to the tree
+      if (path.key === null) continue;
+
+      // ensure we don't visit the same node twice
+      const { node } = path;
+      if (visited.has(node)) continue;
+      if (node) visited.add(node);
+
+      if (path.visit()) {
+        stop = true;
+        break;
+      }
+
+      if (this.priorityQueue.length) {
+        stop = this.visitQueue(this.priorityQueue);
+        this.priorityQueue = [];
+        this.queue = queue;
+        if (stop) break;
+      }
+    }
+
+    // clear queue
+    for (const path of queue) {
+      path.popContext();
+    }
+
+    this.queue = null;
+    return stop;
+  }
+}
+```
+
+The only thing to be noted here is on the line `const paths = cache.getOrCreateCachedPaths(hub, parent);` which is where the cached paths get retrieved (or new paths get created). Looking back at the first 2 parts, we've spoken about the `traverse.cache.clear()` which is used to recompute the whole path (as it sometimes bugs out if we are doing transformations in a questionable way - a.k.a. we mostly modify it through base node modification instead of using the `NodePath`'s available methods).
+
+---
+
+We now recall what we've seen in the `TraversalContext.visitQueue` method: calls to `pushContext`, `visit` and `popContext`, methods of `NodePath` (`resync` can be skipped, it just ensures the `parent`, `key` and `listKey` are correctly set).
+
+```ts
+// @babel/traverse/src/path/context.ts
+export function popContext(this: NodePath) {
+  this.contexts.pop();
+  if (this.contexts.length > 0) {
+    this.setContext(this.contexts[this.contexts.length - 1]);
+  } else {
+    this.setContext(undefined);
+  }
+}
+
+export function pushContext(this: NodePath, context: TraversalContext) {
+  this.contexts.push(context);
+  this.setContext(context);
+}
+
+export function visit(this: NodePath): boolean {
+  if (!this.node) {
+    return false;
+  }
+
+  if (this.isDenylisted()) {
+    return false;
+  }
+
+  if (this.opts.shouldSkip?.(this)) {
+    return false;
+  }
+
+  const currentContext = this.context;
+  // Note: We need to check "this.shouldSkip" first because
+  // another visitor can set it to true. Usually .shouldSkip is false
+  // before calling the enter visitor, but it can be true in case of
+  // a requeued node (e.g. by .replaceWith()) that is then marked
+  // with .skip().
+  if (this.shouldSkip || this.call("enter")) {
+    return this.shouldStop;
+  }
+  restoreContext(this, currentContext);
+
+  this.shouldStop = traverseNode(
+    this.node,
+    this.opts,
+    this.scope,
+    this.state,
+    this,
+    this.skipKeys,
+  );
+
+  restoreContext(this, currentContext);
+
+  this.call("exit");
+
+  return this.shouldStop;
+}
+```
+
+Aha, bingo! The long-sought answer we've been looking for! And the creators even left an awesome note in the code that tells us specifically when the node won't actually be traversed.
+And, of course, the needed method:
+
+```ts
+export function skip(this: NodePath) {
+  this.shouldSkip = true;
+}
+```
+
+
+
+Now, we could stop here, but let's not.<br/>
+Let's ask ourselves, why was this actually happening? I mean, after all, we do visit the node once, so... why is it being visited twice?
+
+Well, the answer lies in the `replacement.ts` file:
+
+```ts
+// @babel/traverse/src/path/replacement.ts
+export function replaceWith<R extends t.Node>(
+  this: NodePath,
+  replacementPath: R | NodePath<R>,
+): [NodePath<R>] {
+  this.resync();
+
+  if (this.removed) throw new Error(/* ... */);
+
+  let replacement: t.Node =
+    replacementPath instanceof NodePath
+      ? replacementPath.node
+      : replacementPath;
+
+  if (!replacement) throw new Error(/* ... */);
+
+  if (this.node === replacement) return this;
+
+  if (this.isProgram() && !isProgram(replacement)) throw new Error(/* ... */);
+
+  if (Array.isArray(replacement)) throw new Error(/* ... */);
+  
+
+  if (typeof replacement === "string") throw new Error(/* ... */);
+
+  let nodePath = "";
+
+  if (this.isNodeType("Statement") && isExpression(replacement)) {
+    if (
+      !this.canHaveVariableDeclarationOrExpression() &&
+      !this.canSwapBetweenExpressionAndStatement(replacement) &&
+      !this.parentPath.isExportDefaultDeclaration()
+    ) {
+      // replacing a statement with an expression so wrap it in an expression statement
+      replacement = expressionStatement(replacement);
+      nodePath = "expression";
+    }
+  }
+
+  if (this.isNodeType("Expression") && isStatement(replacement)) {
+    if (
+      !this.canHaveVariableDeclarationOrExpression() &&
+      !this.canSwapBetweenExpressionAndStatement(replacement)
+    ) {
+      // replacing an expression with a statement so let's explode it
+      return this.replaceExpressionWithStatements([replacement])
+    }
+  }
+
+  const oldNode = this.node;
+  if (oldNode) {
+    inheritsComments(replacement, oldNode);
+    removeComments(oldNode);
+  }
+ 
+  // replace the node
+  this._replaceWith(replacement);
+  this.type = replacement.type;
+
+  // potentially create new scope
+  this.setScope();
+
+  // requeue for visiting
+  this.requeue();
+
+  return [nodePath ? this.get(nodePath) : this];
+}
+
+export function _replaceWith(this: NodePath, node: t.Node) {
+  if (!this.container)throw new ReferenceError("Container is falsy");
+
+  if (this.inList) validate(this.parent, this.key, [node]); 
+  else validate(this.parent, this.key as string, node);
+
+  this.debug(`Replace with ${node?.type}`);
+  getCachedPaths(this.hub, this.parent)?.set(node, this).delete(this.node);
+
+  this.node = this.container[this.key] = node;
+}
+```
+
+As we can see, the line we are interested in is `this.requeue()`, which requeues the path in the priorityQueue to be re-visited.
+
+So another viable option would be popping the latest path from the prioQueue after replacing:
+
+```ts
+// ...
+traverse(AST, {
+  BooleanLiteral(path){
+    const value = path.node.value;
+    path.replaceWith(t.booleanLiteral(!value));
+
+    // either this
+
+    path.skip()
+
+    // or this
+
+    path.context.priorityQueue.pop();
+  }
+})
+// ...
+```
+
+---
+
+### Why did I want to dig more:
+
+I've wanted to touch on a little more than just the `.skip` method bound to the `NodePath` class. That is because, in the past, when I wanted to build my own obfuscator, I was researching an interesting babel plugin related to variable scoping: `babel-plugin-minify-mangle-names`.
+
+This minify babel plugin references 2 other packages (`babel-plugin-minify-dead-code-elimination` and `babel-plugin-minify-simple`) that I've seen use the `pushContext`, `visit` and `popContext` methods. Here I'll give an example from the `babel-plugin-minify-simple` package:
+
+```ts
+// packages/babel-plugin-minify-simple/src/if-statement.js
+
+// ... some code
+
+// If the next statement(s) is an if statement and we can simplify that
+// to potentailly be an expression (or a return) then this will make it
+// easier merge.
+if (next.isIfStatement()) {
+  next.pushContext(path.context);
+  next.visit();
+  next.popContext();
+  next = path.getSibling(path.key + 1);
+}
+
+// ... some other code
+```
+
+As you can see, after doing some modifications, the current path context is pushed, the next sibling is visited (with the current's context visitors) and then the context is popped. This is because, after some modifications, we can forcefully traverse a NodePath and do modifications on it before continuing with our work.
+
+The purpose is pretty self explanatory, given the comment above the code, which lets us know that after current modifications have been done, the next sibling, if it is an if statement, can be simplified even further. This is needed because there's even more simplifications to be done following the code above:
+
+```ts
+// packages/babel-plugin-minify-simple/src/if-statement.js
+
+// No alternate but the next statement is a return
+// also turn into a return conditional
+if (
+  t.isReturnStatement(node.consequent) &&
+  !node.alternate &&
+  next.isReturnStatement()
+) {
+  const nextArg = next.node.argument || h.VOID_0(t);
+  next.remove();
+  path.replaceWith(
+    t.returnStatement(
+      t.conditionalExpression(
+        node.test,
+        node.consequent.argument || h.VOID_0(t),
+        nextArg
+      )
+    )
+  );
+  return REPLACED;
+}
+```
+
+Traversal, as shown above, is done by using TraversalContexts that keep track of the scope, visitors, state, path. It's mostly them we are interested in when modifying the AST.
+
+Hope you learned something new, see you next time!
